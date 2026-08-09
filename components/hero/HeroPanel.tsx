@@ -23,7 +23,7 @@ export default function HeroPanel({ teams }: { teams: LeaderboardEntry[] }) {
   if (teams.length === 0) {
     return (
       <div className="rounded-lg overflow-hidden app-surface h-56 flex items-center justify-center text-secondaryText">
-        TOUR DE CALLISTO
+        TOUR OF BULGARIA — CANVA
       </div>
     )
   }

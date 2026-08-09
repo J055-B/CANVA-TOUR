@@ -25,11 +25,11 @@ function progressColor(pct: number, allowOverflow: boolean) {
 
 // One column wider than the home page's LiveLeaderboard: adds "% OF
 // TARGET" (today's target%) and "% OF JOURNEY" (progress around the whole
-// 17,250km loop) — this page-specific view only, per the Aug 2026 ask.
+// 2,500km Bulgaria loop) — this page-specific view only, per the Aug 2026 ask.
 const GRID_COLS = '56px 1.2fr 1fr 0.85fr 1.3fr 0.9fr 0.85fr 0.9fr 0.8fr 1fr 0.6fr'
 
 // Team Targets table below — fewer columns, so its own template.
-const TARGETS_GRID_COLS = '56px 1.1fr 0.6fr 0.9fr 0.85fr 0.9fr 1fr'
+const TARGETS_GRID_COLS = '56px 1.2fr 1fr 1fr 1fr 1fr 1.1fr'
 
 function journeyPctFor(totalDistance: number) {
   const wrapped = ((totalDistance % LOOP_KM) + LOOP_KM) % LOOP_KM
@@ -89,7 +89,7 @@ export default function DetailedLeaderboard({ entries }: { entries: LeaderboardE
         icon={<Trophy size={16} color="#FFD400" />}
         accent="#FFD400"
         title="LEADERBOARD"
-        subtitle="Live team standings, updated in real time"
+        subtitle="Live CANVA standings, updated in real time"
       />
       {/* Extended table — % OF TARGET and % OF JOURNEY columns added */}
       <div className="overflow-x-auto">
@@ -159,21 +159,21 @@ export default function DetailedLeaderboard({ entries }: { entries: LeaderboardE
 
       <SectionDivider />
 
-      {/* Per-team target table — same row/column style as the leaderboard above */}
+      {/* CANVA target table — same row/column style as the leaderboard above */}
       <div>
         <SectionHeader
           icon={<Target size={16} color="#2DD4BF" />}
           accent="#2DD4BF"
-          title="TEAM TARGETS"
-          subtitle="Daily pace vs weekly pace, per team"
+          title="CANVA TARGET"
+          subtitle="Daily, monthly and weekly CANVA targets"
         />
         <div className="overflow-x-auto">
           <div className="min-w-[700px]">
             <div className="grid gap-4 px-4 pb-1 text-xs font-bold uppercase tracking-wider text-secondaryText" style={{ gridTemplateColumns: TARGETS_GRID_COLS }}>
               <div>POS</div>
               <div>TEAM</div>
-              <div>POOL</div>
               <div>DAILY TARGET</div>
+              <div>MONTHLY TARGET</div>
               <div>% OF TARGET</div>
               <div>WEEKLY TARGET</div>
               <div>% OF WEEKLY TARGET</div>
@@ -203,8 +203,8 @@ export default function DetailedLeaderboard({ entries }: { entries: LeaderboardE
                       <Position pos={pos} />
                     </div>
                     <div className="font-medium">{e.teamCode}</div>
-                    <div className="text-secondaryText">{e.pool}</div>
                     <div>{e.dailyTarget.toLocaleString()}</div>
+                    <div>{e.monthlyTarget?.toLocaleString() ?? '—'}</div>
                     <div className="font-semibold" style={{ color: progressColor(e.targetPct, true) }}>
                       {e.targetPct.toFixed(1)}%
                     </div>

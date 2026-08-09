@@ -1,12 +1,6 @@
-export type Segment = 'FTD' | 'RET'
-
 export interface Team {
   id: string
   teamCode: string
-  pool: 'FTD' | 'RET'
-  initials: string
-  location: string
-  language: string
   dailyTarget: number
   salesToday: number
   /** Full-route km target shown in the UI (falls back to the loop's total km when unset). Not the sales quota. */
@@ -16,7 +10,7 @@ export interface Team {
   countryCode: string
   countryName: string
   currentStage: string
-  /** Per-day sale counts, keyed by "Conversion Date" (YYYY-MM-DD), used to compute distance day by day. */
+  /** Per-day sale counts, keyed by calendar date (YYYY-MM-DD). Aug 10 starts at 08:00; all later days run 00:00–23:59. */
   dailyHistory?: { date: string; sales: number }[]
   totalDistance?: number
   weeklyDistance?: number
@@ -36,7 +30,6 @@ export interface LeaderboardEntry extends Team {
   /**
    * countryCode/countryName/currentStage on a LeaderboardEntry are the
    * team's LIVE position on the route (derived from totalDistance) — not
-   * their home desk. See Team.location/language for home-base info.
    */
 }
 

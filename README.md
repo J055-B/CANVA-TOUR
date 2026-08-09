@@ -1,4 +1,4 @@
-# TOUR DE CALLISTO — August 2026 Edition
+# TOUR OF BULGARIA — CANVA Edition
 
 Requirements
 - Node 18+ and npm
@@ -18,6 +18,7 @@ Build
 npm run build
 ```
 
-Mock data: `data/` and data-source in `lib/data-source.ts`.
+Canonical route source: `data/bulgaria-route.json`; app route adapter: `data/route.ts`.
+Live CANVA target/history: Google Sheets via `lib/data-source.ts`; local fallback is `data/teams.ts`.
 
 Deploy to Vercel by importing the repo — no special config required.

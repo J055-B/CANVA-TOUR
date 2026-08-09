@@ -12,7 +12,7 @@ function formatTimeLeft(ms: number) {
 
 export default function StageSummary({ team }: { team?: LeaderboardEntry }) {
   const [timeLeft, setTimeLeft] = useState(8 * 3600 * 1000 + 24 * 60 * 1000 + 38 * 1000)
-  const currentDistance = team?.dailyTarget ?? team?.salesToday ?? 0
+  const currentDistance = team?.totalDistance ?? 0
   const routeTarget = team?.totalTarget ?? 0
   const percent = routeTarget ? (currentDistance / routeTarget) * 100 : team?.targetPct ?? 0
 

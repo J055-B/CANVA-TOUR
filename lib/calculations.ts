@@ -1,7 +1,7 @@
 import { Team, LeaderboardEntry } from './types'
 import { LOOP_KM, positionForDistance } from '../data/route'
 
-// Tour de Callisto — 10 to 31 August 2026, one-off event (see the One Pager).
+// CANVA-only Tour of Bulgaria — 10 to 31 August 2026. The Bulgaria route package defines the canonical 2,500 km competition scale.
 export const TOUR_START = '2026-08-10'
 const TOUR_END = '2026-08-31'
 
@@ -27,22 +27,10 @@ function ratePerPercent(dateStr: string) {
   return POWER_RATE[dateStr] ?? DEFAULT_RATE
 }
 
-// Mon-Thu each get their own full daily target. Fri/Sat/Sun share one daily
-// target instead of a fresh one per day — a no-op for every team except
-// Madagascar (merged into "MADA + FR" — the Target sheet only gives that
-// pair one combined target), which actually works through that block and
-// gets double the shared target to compensate.
-function isWeekendDate(dateStr: string) {
-  const weekday = new Date(dateStr + 'T00:00:00Z').getUTCDay() // 0=Sun … 5=Fri, 6=Sat
-  return weekday === 0 || weekday === 5 || weekday === 6
-}
-
-function isMadaSharedWeekendDay(teamCode: string, dateStr: string) {
-  return teamCode === 'MADA + FR' && isWeekendDate(dateStr)
-}
-
-function dailyTargetForDate(team: Team, dateStr: string) {
-  return team.dailyTarget * (isMadaSharedWeekendDay(team.teamCode, dateStr) ? 2 : 1)
+// Every competition date is a normal calendar day (00:00–23:59).
+// The only partial opening day is Aug 10, which starts at 08:00.
+function dailyTargetForDate(team: Team, _dateStr: string) {
+  return team.dailyTarget
 }
 
 export function computeTargetPct(sales: number, target: number) {
@@ -77,33 +65,14 @@ function eachDateBetween(start: string, end: string) {
   return dates
 }
 
-// Fri+Sat+Sun collapse into a SINGLE unit within the week — teams don't get
-// 3x the weekly target for a weekend they don't work. MADA + FR actually
-// works the weekend (see isMadaSharedWeekendDay), so its weekend unit counts
-// at 1.8x instead of 1x. Every other day in the week (Mon-Thu, plus Week 3's
-// trailing Monday) counts as its own full unit.
-function weekUnitsFor(week: { start: string; end: string }, teamCode: string) {
-  const weekendMultiplier = teamCode === 'MADA + FR' ? 1.8 : 1
-  let units = 0
-  let weekendCounted = false
-  for (const dateStr of eachDateBetween(week.start, week.end)) {
-    if (isWeekendDate(dateStr)) {
-      if (!weekendCounted) {
-        units += weekendMultiplier
-        weekendCounted = true
-      }
-    } else {
-      units += 1
-    }
-  }
-  return units
+function weekUnitsFor(week: { start: string; end: string }, _teamCode: string) {
+  return eachDateBetween(week.start, week.end).length
 }
 
 // Total km a team would need to hit "on pace" for the CURRENT calendar
 // week — used by the /leaderboard page's per-team stat cards. Clamped to
 // the tour's date range so it still returns something sensible before
-// Aug 10 / after Aug 31. See weekUnitsFor for the Fri/Sat/Sun-as-one-day
-// (or ×1.8 for MADA + FR) rule.
+// Aug 10 / after Aug 31. Week pacing uses calendar days.
 export function weeklyTargetForToday(dailyTarget: number, teamCode: string, today: Date = new Date()) {
   const todayStr = clampToTourRange(today.toISOString().slice(0, 10))
   const week = weekFor(todayStr) ?? WEEKS[WEEKS.length - 1]
@@ -158,8 +127,7 @@ export function computeLap(totalDistance: number) {
   return Math.floor(totalDistance / LOOP_KM) + 1
 }
 
-// Teams arrive already merged where the Target sheet only has one combined
-// row for them (MADA + FTD IL FR) — see data-source.ts's getTeams().
+// CANVA is the only competitor in this edition.
 export function computeLeaderboard(teams: Team[], today: Date = new Date()) {
   const todayStr = today.toISOString().slice(0, 10)
 

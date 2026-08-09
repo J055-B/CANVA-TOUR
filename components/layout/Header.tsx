@@ -43,9 +43,9 @@ export default function Header() {
         <img src="/images/Callisto%20Icon.png" alt="Callisto" className="w-12 h-12 object-contain shrink-0" />
         <div>
           <div className="text-xl font-bold italic">
-            TOUR DE <span className="shimmer-text">CALLISTO</span>
+            TOUR OF <span className="shimmer-text">BULGARIA</span>
           </div>
-          <div className="text-sm text-secondaryText">AUGUST 2026 EDITION</div>
+          <div className="text-sm text-secondaryText">CANVA EDITION · AUGUST 2026</div>
         </div>
         <img src="/images/Bicycle-transparent.png" alt="" className="w-10 h-10 object-contain shrink-0 ml-1" />
       </div>

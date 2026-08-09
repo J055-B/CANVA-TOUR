@@ -55,7 +55,7 @@ export default function IntroGate() {
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-page flex items-center justify-center">
       <div className="relative" style={frameStyle}>
-        <img src="/images/intro-bg.jpg" alt="Tour de Callisto" className="absolute inset-0 w-full h-full object-cover" />
+        <img src="/images/intro-bg.jpg" alt="Tour of Bulgaria — CANVA" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-black/10" />
 
         {/* ENTER + Admin lock — positioned in the open space between the

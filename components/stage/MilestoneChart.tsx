@@ -27,7 +27,7 @@ export default function MilestoneChart({ teams }: { teams: LeaderboardEntry[] })
   const goPrev = () => setActiveIndex((i) => (i === 1 ? MILESTONE_STAGES.length : i - 1))
   const goNext = () => setActiveIndex((i) => (i === MILESTONE_STAGES.length ? 1 : i + 1))
 
-  // Start/end city names, pulled out of "Sofia → Trieste" for the axis end-caps.
+  // Start/end city names are pulled from the Bulgaria stage labels for the axis end-caps.
   const [startCity, endCity] = stage.label.split('→').map((s) => s.trim())
 
   return (

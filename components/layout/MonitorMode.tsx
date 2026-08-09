@@ -10,11 +10,11 @@ const CYCLE_SLOT_MS = 15 * 1000 // 15s per team while cycling on the map
 // the current roster. If the team count grows past that, bump this number;
 // if it's smaller, the map page just wraps around (teams repeat) for the
 // remainder of the cycling window, which is harmless.
-const CYCLE_SLOTS = 16
+const CYCLE_SLOTS = 1
 const MAP_OVERVIEW_DWELL_MS = 2 * 60 * 1000 // 2 min general view before heading home
 
-// Optional kiosk/TV loop, off by default: home (2 min) -> full map, panning
-// to each team in turn every 15s (~4 min) -> full map overview (2 min) ->
+// Optional kiosk/TV loop, off by default: home (2 min) -> CANVA map focus ->
+// full map overview (2 min) ->
 // back to home, repeating. Toggled from the sidebar; persisted in
 // localStorage so a kiosk display keeps it on across refreshes. Lives in
 // the root layout (never unmounts on navigation) so its timers survive

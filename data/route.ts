@@ -1,207 +1,151 @@
 import { RoutePoint } from '../lib/types'
 
-// The full waypoint chain for the Tour de Callisto's one-world loop (see
-// the "Tour de Callisto — One Pager" PDF, pages 2-3). Every team starts at
-// Sofia and advances through these waypoints in order as their totalDistance
-// grows — cities are rolled past, not "stops". Distances between
-// consecutive waypoints started from real highway driving distances
-// (researched via web search, Aug 2026), then were scaled down ~2.2% and
-// rounded to the nearest 5km so the full loop lands on an even 17,250km
-// total (per the One Pager's official Tour distance) instead of the raw
-// researched total (17,643km) — see the "17,250km" ask. The 4 flight legs
-// (marked below) are treated as instantaneous — 0km, per the One Pager's
-// "fly ✈" transitions.
-//
-// countryCode/countryName here are used to show each team's LIVE position
-// on the route (see lib/calculations.ts's positionForDistance usage) — not
-// a team's home desk (that's Team.location/language).
-const COUNTRY_NAMES: Record<string, string> = {
-  BG: 'Bulgaria',
-  RS: 'Serbia',
-  HR: 'Croatia',
-  SI: 'Slovenia',
-  IT: 'Italy',
-  FR: 'France',
-  ES: 'Spain',
-  PT: 'Portugal',
-  GB: 'United Kingdom',
-  CA: 'Canada',
-  US: 'United States',
-  MX: 'Mexico',
-  GT: 'Guatemala',
-  SV: 'El Salvador',
-  HN: 'Honduras',
-  NI: 'Nicaragua',
-  CR: 'Costa Rica',
-  PA: 'Panama',
-  MG: 'Madagascar',
-  IL: 'Israel'
-}
+// Tour of Bulgaria — canonical 2,500 km route for the CANVA-only edition.
+// Source: data/bulgaria-route.json (96 ordered anchors, 20 official milestones).
 
-// [id, name, countryCode, legKmFromPreviousWaypoint, coords?]
+const COUNTRY_NAMES: Record<string, string> = { BG: 'Bulgaria' }
+
 type RawWaypoint = [string, string, string, number, [number, number]?]
 
 const RAW: RawWaypoint[] = [
-  // S1 Sofia -> Trieste
-  ['sofia', 'Sofia', 'BG', 0, [42.6977, 23.3219]],
-  ['nis', 'Nis', 'RS', 160, [43.3209, 21.8958]],
-  ['belgrade', 'Belgrade', 'RS', 235, [44.7866, 20.4489]],
-  ['zagreb', 'Zagreb', 'HR', 380, [45.815, 15.9819]],
-  ['ljubljana', 'Ljubljana', 'SI', 115, [46.0569, 14.5058]],
-  ['trieste', 'Trieste', 'IT', 100, [45.6495, 13.7768]],
-  // S2 Trieste -> Roma
-  ['venezia', 'Venezia', 'IT', 160, [45.4408, 12.3155]],
-  ['milano', 'Milano', 'IT', 240, [45.4642, 9.19]],
-  ['parma', 'Parma', 'IT', 125, [44.8015, 10.3279]],
-  ['modena', 'Modena', 'IT', 60, [44.6471, 10.9252]],
-  ['orvieto', 'Orvieto', 'IT', 285, [42.7186, 12.1109]],
-  ['roma', 'Roma', 'IT', 120, [41.9028, 12.4964]],
-  // S3 Roma -> Marseille
-  ['pisa', 'Pisa', 'IT', 355, [43.7228, 10.4017]],
-  ['torino', 'Torino', 'IT', 325, [45.0703, 7.6869]],
-  ['aix-en-provence', 'Aix-en-Provence', 'FR', 330, [43.5297, 5.4474]],
-  ['marseille', 'Marseille', 'FR', 30, [43.2965, 5.3698]],
-  // S4 Marseille -> Madrid
-  ['arles', 'Arles', 'FR', 90, [43.6766, 4.6278]],
-  ['nimes', 'Nimes', 'FR', 30, [43.8367, 4.3601]],
-  ['montpellier', 'Montpellier', 'FR', 55, [43.6108, 3.8767]],
-  ['perpignan', 'Perpignan', 'FR', 150, [42.6986, 2.8954]],
-  ['zaragoza', 'Zaragoza', 'ES', 470, [41.6488, -0.8891]],
-  ['madrid', 'Madrid', 'ES', 310, [40.4168, -3.7038]],
-  // S5 Madrid -> Porto (POWER 1500)
-  ['malaga', 'Malaga', 'ES', 330, [36.7213, -4.4213]],
-  ['lisbon', 'Lisbon', 'PT', 640, [38.7223, -9.1393]],
-  ['porto', 'Porto', 'PT', 310, [41.1579, -8.6291]],
-  // S6 Porto -> Barcelona
-  ['mombuey', 'Mombuey', 'ES', 265, [42.0357, -6.3369]],
-  ['cembranos', 'Cembranos', 'ES', 100, [42.5167, -5.7833]],
-  ['burgos', 'Burgos', 'ES', 170, [42.3439, -3.6969]],
-  ['barcelona', 'Barcelona', 'ES', 615, [41.3851, 2.1734]],
-  // S7 Barcelona -> Paris
-  ['beziers', 'Beziers', 'FR', 245, [43.3444, 3.2158]],
-  ['clermont-ferrand', 'Clermont-Ferrand', 'FR', 340, [45.7772, 3.087]],
-  ['orleans', 'Orleans', 'FR', 295, [47.9029, 1.9093]],
-  ['paris', 'Paris', 'FR', 130, [48.8566, 2.3522]],
-  // S8 Paris -> London, then FLIGHT to Quebec City
-  ['dover', 'Dover', 'GB', 260, [51.1279, 1.3134]],
-  ['portsmouth', 'Portsmouth', 'GB', 170, [50.8198, -1.088]],
-  ['southampton', 'Southampton', 'GB', 35, [50.9097, -1.4044]],
-  ['birmingham', 'Birmingham', 'GB', 210, [52.4862, -1.8904]],
-  ['london', 'London', 'GB', 160, [51.5072, -0.1276]],
-  ['quebec', 'Quebec City', 'CA', 0, [46.8139, -71.208]], // FLIGHT (0km) from London
-  // S9 Quebec City -> Toronto
-  ['sherbrooke', 'Sherbrooke', 'CA', 230, [45.4042, -71.8929]],
-  ['montreal', 'Montreal', 'CA', 150, [45.5019, -73.5674]],
-  ['ottawa', 'Ottawa', 'CA', 195, [45.4215, -75.6972]],
-  ['toronto', 'Toronto', 'CA', 440, [43.6532, -79.3832]],
-  // S10 Toronto -> Washington DC (POWER 1500), then FLIGHT to Mexico City
-  ['springfield', 'Springfield', 'US', 730, [42.1015, -72.5898]],
-  ['providence', 'Providence', 'US', 135, [41.824, -71.4128]],
-  ['new-york-city', 'New York City', 'US', 285, [40.7128, -74.006]],
-  ['philadelphia', 'Philadelphia', 'US', 155, [39.9526, -75.1652]],
-  ['washington-dc', 'Washington DC', 'US', 225, [38.9072, -77.0369]],
-  ['mexico-city', 'Mexico City', 'MX', 0, [19.4326, -99.1332]], // FLIGHT (0km) from Washington DC, arrives before S11 starts
-  // S11 Mexico City -> Veracruz
-  ['acapulco', 'Acapulco', 'MX', 375, [16.8531, -99.8237]],
-  ['veracruz', 'Veracruz', 'MX', 725, [19.1738, -96.1342]],
-  // S12 Veracruz -> Ciudad de Guatemala
-  ['ciudad-de-guatemala', 'Ciudad de Guatemala', 'GT', 1085, [14.6349, -90.5069]],
-  // S13 Ciudad de Guatemala -> San Jose, via the Interamericana overland
-  // corridor through El Salvador, Honduras and Nicaragua (real driving
-  // distances researched Aug 2026 — the old single 1156km GT->CR jump
-  // skipped 3 countries the app already has flags for).
-  ['san-salvador', 'San Salvador', 'SV', 285, [13.6929, -89.2182]],
-  ['tegucigalpa', 'Tegucigalpa', 'HN', 320, [14.0723, -87.1921]],
-  ['managua', 'Managua', 'NI', 365, [12.1364, -86.2514]],
-  ['san-jose', 'San Jose', 'CR', 415, [9.9281, -84.0907]],
-  // S14 San Jose -> Panama, then FLIGHT to Tulear
-  ['panama', 'Panama City', 'PA', 835, [8.9824, -79.5199]],
-  ['tulear', 'Tulear', 'MG', 0, [-23.352, 43.6694]], // FLIGHT (0km) from Panama City
-  // S15 Tulear -> Toamasina (POWER 1250), then FLIGHT to Ashkelon
-  ['antsirabe', 'Antsirabe', 'MG', 760, [-19.8667, 47.0333]],
-  ['antananarivo', 'Antananarivo', 'MG', 165, [-18.8792, 47.5079]],
-  ['toamasina', 'Toamasina', 'MG', 345, [-18.1497, 49.4023]],
-  ['ashkelon', 'Ashkelon', 'IL', 0, [31.6688, 34.5715]], // FLIGHT (0km) from Toamasina
-  // S16 Ashkelon -> Beer Sheva
-  ['tel-aviv', 'Tel Aviv', 'IL', 50, [32.0853, 34.7818]],
-  ['jerusalem', 'Jerusalem', 'IL', 50, [31.7683, 35.2137]],
-  ['eilat', 'Eilat', 'IL', 335, [29.5581, 34.9482]],
-  ['beer-sheva', 'Beer Sheva', 'IL', 195, [31.2518, 34.7913]]
-  // Lap wraps: Beer Sheva -> Sofia is another instantaneous flight ("fly
-  // Israel -> Sofia for lap 2" per the One Pager) — handled by
-  // positionForDistance's modulo wrap, not an extra table row.
+  ['sofia-1', "Sofia", 'BG', 0.0, [42.6977, 23.3219]],
+  ['kostinbrod-2', "Kostinbrod", 'BG', 21.0, [42.8167, 23.2167]],
+  ['buchin-prohod-3', "Buchin Prohod", 'BG', 16.0, [42.8969, 23.1184]],
+  ['petrohan-pass-4', "Petrohan Pass", 'BG', 32.6, [43.1163, 23.1167]],
+  ['berkovitsa-5', "Berkovitsa", 'BG', 17.8, [43.2361, 23.1258]],
+  ['montana-6', "Montana", 'BG', 28.2, [43.4125, 23.225]],
+  ['dolno-tserovene-7', "Dolno Tserovene", 'BG', 26.9, [43.5917, 23.2583]],
+  ['lom-8', "Lom", 'BG', 33.0, [43.8139, 23.2361]],
+  ['valchedram-9', "Valchedram", 'BG', 28.7, [43.6927, 23.4457]],
+  ['kozloduy-10', "Kozloduy", 'BG', 32.4, [43.7756, 23.7248]],
+  ['mizia-11', "Mizia", 'BG', 18.8, [43.6906, 23.8538]],
+  ['oryahovo-12', "Oryahovo", 'BG', 13.2, [43.7364, 23.9604]],
+  ['knezha-13', "Knezha", 'BG', 38.0, [43.495, 24.0799]],
+  ['dolni-dabnik-14', "Dolni Dabnik", 'BG', 41.0, [43.4066, 24.4404]],
+  ['pleven-15', "Pleven", 'BG', 18.0, [43.417, 24.6067]],
+  ['levski-16', "Levski", 'BG', 58.4, [43.3606, 25.1431]],
+  ['byala-17', "Byala", 'BG', 65.5, [43.4616, 25.7342]],
+  ['ruse-18', "Ruse", 'BG', 60.7, [43.8356, 25.9657]],
+  ['slivo-pole-19', "Slivo Pole", 'BG', 30.3, [43.9427, 26.2068]],
+  ['tutrakan-20', "Tutrakan", 'BG', 46.4, [44.0493, 26.6158]],
+  ['srebarna-21', "Srebarna", 'BG', 49.3, [44.0989, 27.0734]],
+  ['aydemir-22', "Aydemir", 'BG', 10.0, [44.1003, 27.1668]],
+  ['silistra-23', "Silistra", 'BG', 10.3, [44.1171, 27.2606]],
+  ['alfatar-24', "Alfatar", 'BG', 25.6, [43.9451, 27.287]],
+  ['dulovo-25', "Dulovo", 'BG', 24.7, [43.8167, 27.1417]],
+  ['hitrino-26', "Hitrino", 'BG', 61.7, [43.4333, 26.9167]],
+  ['shumen-27', "Shumen", 'BG', 24.1, [43.2706, 26.9229]],
+  ['kaspichan-28', "Kaspichan", 'BG', 26.4, [43.3093, 27.1609]],
+  ['novi-pazar-29', "Novi Pazar", 'BG', 7.1, [43.35, 27.197]],
+  ['devnya-30', "Devnya", 'BG', 44.5, [43.2222, 27.5694]],
+  ['aksakovo-31', "Aksakovo", 'BG', 27.6, [43.2564, 27.8211]],
+  ['varna-32', "Varna", 'BG', 12.0, [43.2141, 27.9147]],
+  ['staro-oryahovo-33', "Staro Oryahovo", 'BG', 26.7, [43.0447, 27.997]],
+  ['byala-varna-province-34', "Byala (Varna Province)", 'BG', 27.9, [42.8743, 27.8887]],
+  ['obzor-35', "Obzor", 'BG', 8.2, [42.8192, 27.8799]],
+  ['banya-nessebar-36', "Banya (Nessebar)", 'BG', 15.4, [42.769, 27.7562]],
+  ['sunny-beach-37', "Sunny Beach", 'BG', 12.0, [42.6952, 27.7104]],
+  ['pomorie-38', "Pomorie", 'BG', 21.5, [42.5588, 27.643]],
+  ['burgas-39', "Burgas", 'BG', 21.2, [42.5048, 27.4626]],
+  ['kameno-40', "Kameno", 'BG', 20.5, [42.5708, 27.2988]],
+  ['karnobat-41', "Karnobat", 'BG', 36.4, [42.65, 26.9833]],
+  ['straldzha-42', "Straldzha", 'BG', 33.5, [42.6, 26.6833]],
+  ['sliven-43', "Sliven", 'BG', 41.3, [42.6817, 26.3229]],
+  ['yambol-44', "Yambol", 'BG', 35.2, [42.4841, 26.5035]],
+  ['elhovo-45', "Elhovo", 'BG', 47.0, [42.1713, 26.5736]],
+  ['topolovgrad-46', "Topolovgrad", 'BG', 29.5, [42.0833, 26.3333]],
+  ['lyubimets-47', "Lyubimets", 'BG', 46.3, [41.8333, 26.0833]],
+  ['svilengrad-48', "Svilengrad", 'BG', 16.2, [41.7667, 26.2]],
+  ['harmanli-49', "Harmanli", 'BG', 40.9, [41.9296, 25.9012]],
+  ['haskovo-50', "Haskovo", 'BG', 38.2, [41.9344, 25.5554]],
+  ['mineralni-bani-51', "Mineralni Bani", 'BG', 22.5, [41.9406, 25.3508]],
+  ['kardzhali-52', "Kardzhali", 'BG', 43.2, [41.65, 25.3667]],
+  ['momchilgrad-53', "Momchilgrad", 'BG', 18.8, [41.5269, 25.4075]],
+  ['krumovgrad-54', "Krumovgrad", 'BG', 28.6, [41.4708, 25.6542]],
+  ['kirkovo-55', "Kirkovo", 'BG', 47.4, [41.3275, 25.3637]],
+  ['benkovski-56', "Benkovski", 'BG', 18.3, [41.35, 25.2333]],
+  ['zlatograd-57', "Zlatograd", 'BG', 19.5, [41.3795, 25.0961]],
+  ['nedelino-58', "Nedelino", 'BG', 14.0, [41.456, 25.0806]],
+  ['rudozem-59', "Rudozem", 'BG', 32.0, [41.4875, 24.8494]],
+  ['smolyan-60', "Smolyan", 'BG', 26.0, [41.5774, 24.7011]],
+  ['shiroka-laka-61', "Shiroka Laka", 'BG', 24.4, [41.6792, 24.5838]],
+  ['devin-62', "Devin", 'BG', 27.4, [41.7433, 24.4]],
+  ['borino-63', "Borino", 'BG', 18.0, [41.6844, 24.2934]],
+  ['dospat-64', "Dospat", 'BG', 19.8, [41.644, 24.1586]],
+  ['sarnitsa-65', "Sarnitsa", 'BG', 24.9, [41.738, 24.0253]],
+  ['batak-66', "Batak", 'BG', 45.3, [41.9423, 24.2181]],
+  ['peshtera-67', "Peshtera", 'BG', 20.2, [42.0337, 24.3024]],
+  ['krichim-68', "Krichim", 'BG', 23.0, [42.0414, 24.4729]],
+  ['stamboliyski-69', "Stamboliyski", 'BG', 19.1, [42.1354, 24.5353]],
+  ['plovdiv-70', "Plovdiv", 'BG', 28.3, [42.1354, 24.7453]],
+  ['tsalapitsa-71', "Tsalapitsa", 'BG', 19.8, [42.1833, 24.5667]],
+  ['pazardzhik-72', "Pazardzhik", 'BG', 24.4, [42.1928, 24.3336]],
+  ['belovo-73', "Belovo", 'BG', 35.0, [42.2131, 23.999]],
+  ['velingrad-74', "Velingrad", 'BG', 26.2, [42.0275, 23.9916]],
+  ['yakoruda-75', "Yakoruda", 'BG', 32.3, [42.0253, 23.6842]],
+  ['razlog-76', "Razlog", 'BG', 30.0, [41.8863, 23.4671]],
+  ['bansko-77', "Bansko", 'BG', 7.1, [41.8383, 23.4885]],
+  ['dobrinishte-78', "Dobrinishte", 'BG', 8.2, [41.819, 23.5615]],
+  ['mesta-79', "Mesta", 'BG', 15.2, [41.7333, 23.65]],
+  ['garmen-80', "Garmen", 'BG', 24.8, [41.598, 23.799]],
+  ['gotse-delchev-81', "Gotse Delchev", 'BG', 8.1, [41.5736, 23.7294]],
+  ['hadzhidimovo-82', "Hadzhidimovo", 'BG', 16.3, [41.5223, 23.8686]],
+  ['koprivlen-83', "Koprivlen", 'BG', 9.2, [41.487, 23.795]],
+  ['paril-84', "Paril", 'BG', 16.7, [41.44, 23.65]],
+  ['katuntsi-85', "Katuntsi", 'BG', 23.1, [41.4467, 23.4311]],
+  ['melnik-86', "Melnik", 'BG', 11.6, [41.5233, 23.3935]],
+  ['sandanski-87', "Sandanski", 'BG', 13.1, [41.5667, 23.2833]],
+  ['kresna-88', "Kresna", 'BG', 27.3, [41.7333, 23.15]],
+  ['simitli-89', "Simitli", 'BG', 22.8, [41.8919, 23.1111]],
+  ['blagoevgrad-90', "Blagoevgrad", 'BG', 18.2, [42.0209, 23.0943]],
+  ['kocherinovo-91', "Kocherinovo", 'BG', 9.8, [42.0843, 23.057]],
+  ['dupnitsa-92', "Dupnitsa", 'BG', 26.0, [42.2644, 23.1086]],
+  ['dolna-dikanya-93', "Dolna Dikanya", 'BG', 29.1, [42.4667, 23.1667]],
+  ['pernik-94', "Pernik", 'BG', 23.8, [42.6052, 23.0378]],
+  ['vladaya-95', "Vladaya", 'BG', 17.2, [42.6284, 23.2009]],
+  ['sofia-96', "Sofia", 'BG', 15.9, [42.6977, 23.3219]]
 ]
 
-const route: RoutePoint[] = (() => {
-  let cumulativeKm = 0
-  return RAW.map(([id, name, countryCode, legKm, coords]) => {
-    cumulativeKm += legKm
-    return {
-      id,
-      name,
-      countryCode,
-      countryName: COUNTRY_NAMES[countryCode] ?? countryCode,
-      cumulativeKm,
-      coords
-    }
-  })
-})()
+const route: RoutePoint[] = RAW.map(([id, name, countryCode, legKm, coords], index) => ({
+  id,
+  name,
+  countryCode,
+  countryName: COUNTRY_NAMES[countryCode] ?? countryCode,
+  cumulativeKm: RAW.slice(0, index + 1).reduce((sum, item) => sum + item[3], 0),
+  coords
+}))
 
-export const LOOP_KM = route[route.length - 1].cumulativeKm
+export const LOOP_KM = 2500
 
-// Where a team currently is on the loop, given how much distance they've
-// covered so far. Wraps around every LOOP_KM (completing the loop starts
-// lap 2 back at Sofia — distance never resets, see computeLap).
 export function positionForDistance(totalDistance: number) {
   const wrapped = ((totalDistance % LOOP_KM) + LOOP_KM) % LOOP_KM
-
   let idx = 0
   for (let i = 0; i < route.length; i++) {
     if (route[i].cumulativeKm <= wrapped) idx = i
     else break
   }
-
   const from = route[idx]
   const to = route[Math.min(idx + 1, route.length - 1)]
   const legKm = to.cumulativeKm - from.cumulativeKm
-
   return {
-    // The country of the waypoint already reached — not the next one, so a
-    // team sitting at km 0 reads as Bulgaria (Sofia), not Serbia (Nis).
     countryCode: from.countryCode,
     countryName: from.countryName,
     currentStage: from.id === to.id ? from.name : `${from.name} → ${to.name}`,
-    // How many km are left to reach `to` (the destination named in currentStage).
     kmToNextWaypoint: Math.max(0, to.cumulativeKm - wrapped),
-    // % of the current leg (from -> to) already covered — used to color the DISTANCE column.
     legProgressPct: legKm ? Math.max(0, Math.min(100, ((wrapped - from.cumulativeKm) / legKm) * 100)) : 100
   }
 }
 
-// The stage that comes AFTER the leg the leader is currently on — used by
-// the Hero panel's third card ("what's coming up next"). Distinct from
-// positionForDistance, which only tells you the CURRENT leg.
 export function nextStageForDistance(totalDistance: number) {
   const wrapped = ((totalDistance % LOOP_KM) + LOOP_KM) % LOOP_KM
-
   let idx = 0
   for (let i = 0; i < route.length; i++) {
     if (route[i].cumulativeKm <= wrapped) idx = i
     else break
   }
-
-  // idx -> idx+1 is the CURRENT leg (same as positionForDistance); the
-  // NEXT leg starts at idx+1 and runs to idx+2.
   const from = route[Math.min(idx + 1, route.length - 1)]
   const to = route[Math.min(idx + 2, route.length - 1)]
-
-  return {
-    countryCode: from.countryCode,
-    countryName: from.countryName,
-    stageLabel: from.id === to.id ? from.name : `${from.name} → ${to.name}`,
-    // Feed this into videoUrlForDistance to get that stage's city clip.
-    cumulativeKm: from.cumulativeKm
-  }
+  return { countryCode: from.countryCode, countryName: from.countryName, stageLabel: from.id === to.id ? from.name : `${from.name} → ${to.name}`, cumulativeKm: from.cumulativeKm }
 }
 
 export default route
