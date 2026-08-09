@@ -1,4 +1,4 @@
-import route, { LOOP_KM } from '../data/route'
+import route from '../data/route'
 import teamsRaw from '../data/teams'
 import { computeLeaderboard } from './calculations'
 import { RoutePoint, Team } from './types'
@@ -11,21 +11,39 @@ const SHEET_CSV_URL = (sheetName: string) =>
     sheetName
   )}&tqx=out:csv`
 
-// CANVA is the only competitor in this edition.
-// The live Target row is BG CANVA and the sales tab is Canva.
+// Static map from the Target sheet's team rows to their real sheet tabs.
+// Regex-guessing the tab name from the team label is fragile (e.g. the
+// Target sheet's RET row "BS ES" is NOT the "RET BS ES" tab — the real tab
+// is "RET IL BS:", trailing colon and all) — this table is the ground
+// truth instead, taken directly from the live spreadsheet's tab list.
+//
+// `matchName` is matched against the Target sheet's "Team" column in sheet
+// order, consuming one row per config entry — this is what correctly
+// disambiguates "BS ES" and "IL ES", which each appear once in the FTD
+// block and once in the RET block.
 interface TeamSheetConfig {
   matchName: string
   teamCode: string
+  pool: 'FTD' | 'RET'
   sheetNames: string[]
+  language: string
+  location: string
   countryName: string
   countryCode: string
 }
 
 const TEAM_SHEETS: TeamSheetConfig[] = [
+  // CANVA is the only competitor in this edition. The Target tab uses the
+  // row name `BG CANVA`; the sheet itself has historically followed the
+  // FTD naming convention. We accept the known tab-name variants so the
+  // copy keeps working if the tab is renamed without changing the app.
   {
     matchName: 'BG CANVA',
     teamCode: 'CANVA',
+    pool: 'FTD',
     sheetNames: ['Canva', 'FTD BG CANVA', 'BG CANVA', 'CANVA'],
+    language: 'EN',
+    location: 'Bulgaria',
     countryName: 'Bulgaria',
     countryCode: 'BG'
   }
@@ -86,7 +104,10 @@ function parseCsv(text: string): string[][] {
 
 function parseNumber(value?: string) {
   if (value === undefined || value === null) return undefined
-  // Google Sheets exports numeric targets with comma thousands separators.
+  // The sheet uses "," as a thousands separator and "." as the decimal
+  // point (e.g. RET targets like "152,900.00") — strip commas, don't
+  // treat them as a decimal separator, or big RET numbers get mangled
+  // into an invalid "152.900.00" and silently parse as 0.
   const cleaned = value
     .toString()
     .trim()
@@ -138,7 +159,10 @@ function parseTargetRows(rows: string[][]): TargetRow[] {
     .filter((row) => row.rawTeamName.trim().length > 0)
 }
 
-// Match the single CANVA target row by team name.
+// Consumes one Target row per config entry, in TEAM_SHEETS order — the
+// first "BS ES"/"IL ES" row found goes to the FTD config (which is listed
+// first, matching the sheet's real top-to-bottom layout), the second goes
+// to the RET config.
 function assignTargets(configs: TeamSheetConfig[], targetRows: TargetRow[]) {
   const remaining = [...targetRows]
   return configs.map((cfg) => {
@@ -181,6 +205,32 @@ function buildDailyHistoryByCount(rows: string[][]): { date: string; sales: numb
     .sort((a, b) => (a.date < b.date ? -1 : 1))
 }
 
+// RET sheets: daily targets are REVENUE (USD, e.g. "152,900.00"), not a
+// sale count — a team with 3 big charges must outscore a team with 10 tiny
+// ones. So instead of counting rows, sum each row's "SUM" column (the
+// per-charge USD amount already computed in the sheet), bucketed by the
+// same "Date" column's calendar day.
+function buildDailyHistoryByAmount(rows: string[][]): { date: string; sales: number }[] {
+  if (rows.length < 2) return []
+  const headers = rows[0].map((h) => normalizeHeader(h || ''))
+  const dateIndex = headers.findIndex((h) => /conversion.*date|^date$/.test(h))
+  const amountIndex = headers.findIndex((h) => /^sum$/.test(h))
+  if (dateIndex === -1 || amountIndex === -1) return []
+
+  const totals = new Map<string, number>()
+  for (const row of rows.slice(1)) {
+    const raw = (row[dateIndex] || '').trim()
+    const date = raw.slice(0, 10)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue
+    const amount = parseNumber(row[amountIndex]) ?? 0
+    totals.set(date, (totals.get(date) ?? 0) + amount)
+  }
+
+  return Array.from(totals.entries())
+    .map(([date, sales]) => ({ date, sales }))
+    .sort((a, b) => (a.date < b.date ? -1 : 1))
+}
+
 function mergeDailyHistory(a: { date: string; sales: number }[], b: { date: string; sales: number }[]) {
   const counts = new Map<string, number>()
   for (const { date, sales } of [...a, ...b]) {
@@ -192,7 +242,9 @@ function mergeDailyHistory(a: { date: string; sales: number }[], b: { date: stri
 }
 
 function buildTeam(cfg: TeamSheetConfig & { dailyTarget: number; monthlyTarget?: number }, sheetRowsByName: Map<string, string[][]>): Team {
-  const buildHistory = buildDailyHistoryByCount
+  // RET's daily target is money, FTD's is a sale count — see the two
+  // buildDailyHistoryBy* functions above for why each pool needs its own.
+  const buildHistory = cfg.pool === 'RET' ? buildDailyHistoryByAmount : buildDailyHistoryByCount
   const availableSheetNames = cfg.sheetNames.filter((name) => sheetRowsByName.has(name))
   const selectedSheetNames = availableSheetNames.length ? [availableSheetNames[0]] : []
   const histories = selectedSheetNames.map((name) => buildHistory(sheetRowsByName.get(name) ?? []))
@@ -201,10 +253,18 @@ function buildTeam(cfg: TeamSheetConfig & { dailyTarget: number; monthlyTarget?:
   return {
     id: cfg.teamCode.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
     teamCode: cfg.teamCode,
+    pool: cfg.pool,
+    initials: cfg.teamCode
+      .split(' ')
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 6)
+      .toUpperCase(),
+    location: cfg.location,
+    language: cfg.language,
     dailyTarget: cfg.dailyTarget,
     salesToday: 0, // overwritten by computeLeaderboard using dailyHistory
     monthlyTarget: cfg.monthlyTarget,
-    totalTarget: LOOP_KM,
     currentStage: '',
     countryCode: cfg.countryCode,
     countryName: cfg.countryName,

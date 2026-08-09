@@ -12,7 +12,7 @@ export default async function TeamsPage() {
         {teams.map((t) => (
           <div key={t.id} className="p-4 app-surface rounded">
             <div className="font-bold">{t.teamCode}</div>
-            <div className="text-sm text-secondaryText">Bulgaria • FTD</div>
+            <div className="text-sm text-secondaryText">{t.location} • {t.language}</div>
             <div className="mt-2">Total distance: {Math.round(t.totalDistance ?? 0).toLocaleString()} km</div>
           </div>
         ))}

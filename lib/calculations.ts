@@ -72,7 +72,8 @@ function weekUnitsFor(week: { start: string; end: string }, _teamCode: string) {
 // Total km a team would need to hit "on pace" for the CURRENT calendar
 // week — used by the /leaderboard page's per-team stat cards. Clamped to
 // the tour's date range so it still returns something sensible before
-// Aug 10 / after Aug 31. Week pacing uses calendar days.
+// Aug 10 / after Aug 31. See weekUnitsFor for the Fri/Sat/Sun-as-one-day
+// calendar-day rule.
 export function weeklyTargetForToday(dailyTarget: number, teamCode: string, today: Date = new Date()) {
   const todayStr = clampToTourRange(today.toISOString().slice(0, 10))
   const week = weekFor(todayStr) ?? WEEKS[WEEKS.length - 1]

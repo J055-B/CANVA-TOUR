@@ -6,6 +6,10 @@ const teams: Team[] = [
   {
     id: 'canva',
     teamCode: 'CANVA',
+    pool: 'FTD',
+    initials: 'CANVA',
+    location: 'Bulgaria',
+    language: 'EN',
     dailyTarget: 0,
     salesToday: 0,
     totalTarget: 2500,

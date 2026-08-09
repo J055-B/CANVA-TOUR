@@ -1,2 +1,21 @@
-code,name,file
+cc,name,file
 BG,Bulgaria,BG_Bulgaria.svg
+RS,Serbia,RS_Serbia.svg
+HR,Croatia,HR_Croatia.svg
+SI,Slovenia,SI_Slovenia.svg
+IT,Italy,IT_Italy.svg
+FR,France,FR_France.svg
+ES,Spain,ES_Spain.svg
+PT,Portugal,PT_Portugal.svg
+GB,United Kingdom,GB_United_Kingdom.svg
+CA,Canada,CA_Canada.svg
+US,United States,US_United_States.svg
+MX,Mexico,MX_Mexico.svg
+GT,Guatemala,GT_Guatemala.svg
+SV,El Salvador,SV_El_Salvador.svg
+HN,Honduras,HN_Honduras.svg
+NI,Nicaragua,NI_Nicaragua.svg
+CR,Costa Rica,CR_Costa_Rica.svg
+PA,Panama,PA_Panama.svg
+MG,Madagascar,MG_Madagascar.svg
+IL,Israel,IL_Israel.svg

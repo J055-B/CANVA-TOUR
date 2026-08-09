@@ -53,7 +53,7 @@ async function routeChunkWithRetry(chunk: RoutePoint[], attempts = 3) {
 
 // The public OSRM demo server sometimes rejects a long multi-waypoint
 // request as a whole ("NoRoute") even though every individual leg in it
-// routes fine on its own, with each Bulgaria route segment handled independently.
+// routes fine on its own — observed e.g. on the Marseille..Malaga stretch.
 // Rather than give up on the whole chunk (and fall back to a straight line
 // across a huge stretch of real road), split the chunk in half and retry
 // each half; only a single un-splittable leg (2 points) that still fails
