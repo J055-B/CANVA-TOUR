@@ -139,6 +139,11 @@ interface TeamMetrics {
   kmToday: number
   totalDistance: number
   weeklyDistance: number
+  /** Raw sales this week (count for FTD, USD for RET) — NOT km. Needed
+   * because weeklyTarget (from the Target sheet) is also in raw sales
+   * units; comparing it against weeklyDistance (km) was the "% OF WEEKLY
+   * TARGET showing 3,000%+" bug. */
+  weeklySales: number
 }
 
 function computeTeamMetrics(team: Team, todayStr: string): TeamMetrics {
@@ -148,6 +153,7 @@ function computeTeamMetrics(team: Team, todayStr: string): TeamMetrics {
 
   let totalDistance = 0
   let weeklyDistance = 0
+  let weeklySales = 0
 
   if (todayStr >= TOUR_START) {
     for (const date of eachDateBetween(TOUR_START, lastDay)) {
@@ -156,6 +162,7 @@ function computeTeamMetrics(team: Team, todayStr: string): TeamMetrics {
       totalDistance += km
       if (currentWeek && date >= currentWeek.start && date <= currentWeek.end) {
         weeklyDistance += km
+        weeklySales += sales
       }
     }
   }
@@ -170,7 +177,7 @@ function computeTeamMetrics(team: Team, todayStr: string): TeamMetrics {
   const targetPct = computeTargetPct(salesToday, dailyTargetForDate(team, todayStr))
   const kmToday = kmForDay(team, todayStr, salesToday)
 
-  return { salesToday, targetPct, kmToday, totalDistance, weeklyDistance }
+  return { salesToday, targetPct, kmToday, totalDistance, weeklyDistance, weeklySales }
 }
 
 export function computeLap(totalDistance: number) {
@@ -192,6 +199,7 @@ export function computeLeaderboard(teams: Team[], today: Date = new Date()) {
       kmToday: metrics.kmToday,
       totalDistance: metrics.totalDistance,
       weeklyDistance: metrics.weeklyDistance,
+      weeklySales: metrics.weeklySales,
       // Live race position, not the team's home desk — see positionForDistance.
       countryCode: position.countryCode,
       countryName: position.countryName,

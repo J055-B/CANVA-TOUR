@@ -25,6 +25,8 @@ export interface LeaderboardEntry extends Team {
   kmToday: number
   totalDistance: number
   weeklyDistance: number
+  /** Raw sales this week (count for FTD, USD for RET), not km — compare against weeklyTargetForToday's result, never against weeklyDistance. */
+  weeklySales: number
   gap: number
   lap: number
   /** Km remaining to reach the destination named in currentStage. */
