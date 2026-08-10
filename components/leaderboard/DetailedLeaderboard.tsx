@@ -1,16 +1,10 @@
 "use client"
 import React from 'react'
-import { Trophy, Target, Bike } from 'lucide-react'
+import { Trophy, Target, Bike, MapPin } from 'lucide-react'
 import { LeaderboardEntry } from '../../lib/types'
 import { flagUrl } from '../../lib/flags'
 import { weeklyTargetForToday, computeTargetPct } from '../../lib/calculations'
 import { LOOP_KM } from '../../data/route'
-
-const MEDAL_COLOR: Record<number, string> = {
-  1: '#FFD700', // gold
-  2: '#C0C0C0', // silver
-  3: '#CD7F32' // bronze
-}
 
 const RED: [number, number, number] = [255, 69, 58]
 const GREEN: [number, number, number] = [86, 217, 43]
@@ -23,33 +17,12 @@ function progressColor(pct: number, allowOverflow: boolean) {
   return `rgb(${rgb.join(',')})`
 }
 
-// One column wider than the home page's LiveLeaderboard: adds "% OF
-// TARGET" (today's target%) and "% OF JOURNEY" (progress around the whole
-// 2,500km Bulgaria loop) — this page-specific view only, per the Aug 2026 ask.
-const GRID_COLS = '56px 1.2fr 1fr 0.85fr 1.3fr 0.9fr 0.85fr 0.9fr 0.8fr 1fr 0.6fr'
-
-// Team Targets table below — fewer columns, so its own template.
-const TARGETS_GRID_COLS = '56px 1fr 0.6fr 0.85fr 0.85fr 0.85fr 0.85fr 1fr'
-
 function journeyPctFor(totalDistance: number) {
   const wrapped = ((totalDistance % LOOP_KM) + LOOP_KM) % LOOP_KM
   return (wrapped / LOOP_KM) * 100
 }
 
-function Position({ pos }: { pos: number }) {
-  const color = MEDAL_COLOR[pos]
-  return (
-    <span className="flex items-center gap-1.5">
-      <span className="w-4 shrink-0 flex items-center justify-center">{color && <Trophy size={16} color={color} fill={color} />}</span>
-      <span className="font-bold">{pos}</span>
-    </span>
-  )
-}
-
-// Icon badge + title + subtitle + a gradient underline that fades out
-// (instead of a flat rule) — used for both the LEADERBOARD and TEAM
-// TARGETS section headers below, each with its own accent color so they
-// read as distinct at a glance.
+// Icon badge + title + subtitle + a gradient underline that fades out.
 function SectionHeader({ icon, accent, title, subtitle }: { icon: React.ReactNode; accent: string; title: string; subtitle: string }) {
   return (
     <div className="mb-4">
@@ -67,9 +40,6 @@ function SectionHeader({ icon, accent, title, subtitle }: { icon: React.ReactNod
   )
 }
 
-// Divider between the two sections — a centered ring icon on a fading line,
-// instead of a plain gap, so the break between "ranking" and "targets"
-// reads as an intentional beat rather than empty space.
 function SectionDivider() {
   return (
     <div className="flex items-center gap-3.5 my-7">
@@ -82,141 +52,95 @@ function SectionDivider() {
   )
 }
 
+function StatCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
+  return (
+    <div className="rounded-xl bg-elevated/60 border border-border px-5 py-4">
+      <div className="text-xs font-bold uppercase tracking-wider text-secondaryText">{label}</div>
+      <div className="text-2xl font-bold mt-1.5" style={color ? { color } : undefined}>
+        {value}
+      </div>
+      {sub && <div className="text-xs text-secondaryText mt-1">{sub}</div>}
+    </div>
+  )
+}
+
+// Canva's private, single-team Tour of Bulgaria has no one to rank against
+// — so instead of the world Tour's ranked table (POS/GAP columns, medal
+// colors, "who's ahead"), this is a solo progress dashboard: the same
+// underlying numbers (today's pace, journey %, distance to the next town,
+// lap count), just framed as "how are we doing" rather than "who's
+// winning".
 export default function DetailedLeaderboard({ entries }: { entries: LeaderboardEntry[] }) {
+  const team = entries[0]
+
+  if (!team) {
+    return (
+      <div className="rounded-lg p-6 app-surface border border-border text-secondaryText text-sm">
+        No data yet — check back once sales start coming in.
+      </div>
+    )
+  }
+
+  const flag = flagUrl(team.countryCode)
+  const journeyPct = journeyPctFor(team.totalDistance)
+  const weeklyTarget = weeklyTargetForToday(team.dailyTarget, team.teamCode)
+  const weeklyPct = computeTargetPct(team.weeklyDistance, weeklyTarget)
+
   return (
     <div>
-      <SectionHeader
-        icon={<Trophy size={16} color="#FFD400" />}
-        accent="#FFD400"
-        title="LEADERBOARD"
-        subtitle="Live team standings, updated in real time"
-      />
-      {/* Extended table — % OF TARGET and % OF JOURNEY columns added */}
-      <div className="overflow-x-auto">
-        <div className="min-w-[1100px]">
-          <div className="grid gap-4 px-4 pb-1 text-xs font-bold uppercase tracking-wider text-secondaryText" style={{ gridTemplateColumns: GRID_COLS }}>
-            <div>POS</div>
-            <div>TEAM</div>
-            <div>CURRENT KM</div>
-            <div>% OF JOURNEY</div>
-            <div>ROUTE TARGET</div>
-            <div>TODAY</div>
-            <div>% OF TARGET</div>
-            <div>DISTANCE</div>
-            <div>GAP</div>
-            <div>COUNTRY</div>
-            <div>LAP</div>
-          </div>
-          <div className="mt-3 space-y-2">
-            {entries.map((e, i) => {
-              const pos = i + 1
-              const flag = flagUrl(e.countryCode)
-              const isLeader = pos === 1
-              const journeyPct = journeyPctFor(e.totalDistance)
-              return (
-                <div
-                  key={e.id}
-                  className={
-                    'grid items-center gap-4 rounded-2xl px-4 py-3.5 transition-colors ' +
-                    (isLeader
-                      ? 'bg-gradient-to-r from-yellow/25 via-yellow/10 to-transparent border border-yellow shadow-[0_0_20px_-6px_rgba(255,212,0,0.6)]'
-                      : 'bg-elevated/60 border border-border')
-                  }
-                  style={{ gridTemplateColumns: GRID_COLS }}
-                >
-                  <div>
-                    <Position pos={pos} />
-                  </div>
-                  <div className="font-medium">{e.teamCode}</div>
-                  <div>{Math.round(e.totalDistance).toLocaleString()} km</div>
-                  <div className="font-semibold" style={{ color: progressColor(journeyPct, false) }}>
-                    {journeyPct.toFixed(1)}%
-                  </div>
-                  <div className="text-secondaryText">{e.currentStage || '—'}</div>
-                  <div className="font-semibold" style={{ color: progressColor(e.targetPct, true) }}>
-                    {Math.round(e.kmToday)} km
-                  </div>
-                  <div className="font-semibold" style={{ color: progressColor(e.targetPct, true) }}>
-                    {e.targetPct.toFixed(1)}%
-                  </div>
-                  <div className="font-semibold" style={{ color: progressColor(e.legProgressPct, false) }}>
-                    {Math.round(e.kmToNextWaypoint).toLocaleString()} km
-                  </div>
-                  <div>
-                    {e.gap === 0 ? <span className="text-secondaryText">—</span> : <span className="text-negative font-semibold">-{Math.abs(e.gap)} km</span>}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {flag && <img src={flag} alt="" className="w-5 h-3.5 rounded-sm object-cover border border-border" />}
-                    {e.countryCode}
-                  </div>
-                  <div>{e.lap}</div>
-                </div>
-              )
-            })}
+      <SectionHeader icon={<Trophy size={16} color="#FFD400" />} accent="#FFD400" title="MY PROGRESS" subtitle="Canva's live standing on the Tour of Bulgaria" />
+
+      <div className="rounded-2xl bg-gradient-to-r from-yellow/20 via-yellow/5 to-transparent border border-yellow px-5 py-4 mb-4 flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          {flag && <img src={flag} alt="" className="w-8 h-5.5 rounded object-cover border border-border" />}
+          <div>
+            <div className="text-xl font-bold">{team.teamCode}</div>
+            <div className="text-xs text-secondaryText flex items-center gap-1 mt-0.5">
+              <MapPin size={11} />
+              {team.currentStage || '—'}
+            </div>
           </div>
         </div>
+        <div className="text-right">
+          <div className="text-xs text-secondaryText">LAP</div>
+          <div className="text-2xl font-bold text-yellow">{team.lap}</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <StatCard label="Current distance" value={`${Math.round(team.totalDistance).toLocaleString()} km`} />
+        <StatCard label="% of journey" value={`${journeyPct.toFixed(1)}%`} color={progressColor(journeyPct, false)} sub={`out of ${LOOP_KM.toLocaleString()} km`} />
+        <StatCard label="Today" value={`${Math.round(team.kmToday)} km`} color={progressColor(team.targetPct, true)} sub={`${team.targetPct.toFixed(1)}% of daily target`} />
+        <StatCard
+          label="Distance to next town"
+          value={`${Math.round(team.kmToNextWaypoint).toLocaleString()} km`}
+          color={progressColor(team.legProgressPct, false)}
+        />
+        <StatCard label="Weekly target" value={`${weeklyPct.toFixed(1)}%`} color={progressColor(weeklyPct, true)} sub={`${weeklyTarget.toLocaleString()} target this week`} />
+        <StatCard label="Daily target" value={team.dailyTarget.toLocaleString()} sub={`${Math.round(team.kmToday)} km sold today`} />
       </div>
 
       <SectionDivider />
 
-      {/* CANVA target table — same row/column style as the leaderboard above */}
       <div>
-        <SectionHeader
-          icon={<Target size={16} color="#2DD4BF" />}
-          accent="#2DD4BF"
-          title="TEAM TARGETS"
-          subtitle="Daily, monthly and weekly CANVA targets"
-        />
-        <div className="overflow-x-auto">
-          <div className="min-w-[700px]">
-            <div className="grid gap-4 px-4 pb-1 text-xs font-bold uppercase tracking-wider text-secondaryText" style={{ gridTemplateColumns: TARGETS_GRID_COLS }}>
-              <div>POS</div>
-              <div>TEAM</div>
-              <div>POOL</div>
-              <div>DAILY TARGET</div>
-              <div>MONTHLY TARGET</div>
-              <div>% OF TARGET</div>
-              <div>WEEKLY TARGET</div>
-              <div>% OF WEEKLY TARGET</div>
+        <SectionHeader icon={<Target size={16} color="#2DD4BF" />} accent="#2DD4BF" title="TARGET PACE" subtitle="How today and this week compare to target" />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl bg-elevated/60 border border-border px-5 py-4">
+            <div className="text-xs font-bold uppercase tracking-wider text-secondaryText">Daily pace</div>
+            <div className="text-3xl font-bold mt-2" style={{ color: progressColor(team.targetPct, true) }}>
+              {team.targetPct.toFixed(1)}%
             </div>
-            <div className="mt-3 space-y-2">
-              {entries.map((e, i) => {
-                const pos = i + 1
-                const isLeader = pos === 1
-                const weeklyTarget = weeklyTargetForToday(e.dailyTarget, e.teamCode)
-                // Uncapped like the daily %, so a team that blows past 100% for
-                // the week keeps climbing instead of flatlining — the whole
-                // point is to see who's actually pulling ahead once everyone
-                // clears their target.
-                const weeklyPct = computeTargetPct(e.weeklyDistance, weeklyTarget)
-                return (
-                  <div
-                    key={e.id}
-                    className={
-                      'grid items-center gap-4 rounded-2xl px-4 py-3.5 transition-colors ' +
-                      (isLeader
-                        ? 'bg-gradient-to-r from-yellow/25 via-yellow/10 to-transparent border border-yellow shadow-[0_0_20px_-6px_rgba(255,212,0,0.6)]'
-                        : 'bg-elevated/60 border border-border')
-                    }
-                    style={{ gridTemplateColumns: TARGETS_GRID_COLS }}
-                  >
-                    <div>
-                      <Position pos={pos} />
-                    </div>
-                    <div className="font-medium">{e.teamCode}</div>
-                    <div className="text-secondaryText">{e.pool}</div>
-                    <div>{e.dailyTarget.toLocaleString()}</div>
-                    <div>{e.monthlyTarget?.toLocaleString() ?? '—'}</div>
-                    <div className="font-semibold" style={{ color: progressColor(e.targetPct, true) }}>
-                      {e.targetPct.toFixed(1)}%
-                    </div>
-                    <div>{weeklyTarget.toLocaleString()}</div>
-                    <div className="font-semibold" style={{ color: progressColor(weeklyPct, true) }}>
-                      {weeklyPct.toFixed(1)}%
-                    </div>
-                  </div>
-                )
-              })}
+            <div className="text-xs text-secondaryText mt-1">
+              {Math.round(team.kmToday)} km today / {team.dailyTarget.toLocaleString()} target
+            </div>
+          </div>
+          <div className="rounded-xl bg-elevated/60 border border-border px-5 py-4">
+            <div className="text-xs font-bold uppercase tracking-wider text-secondaryText">Weekly pace</div>
+            <div className="text-3xl font-bold mt-2" style={{ color: progressColor(weeklyPct, true) }}>
+              {weeklyPct.toFixed(1)}%
+            </div>
+            <div className="text-xs text-secondaryText mt-1">
+              {Math.round(team.weeklyDistance).toLocaleString()} km this week / {weeklyTarget.toLocaleString()} target
             </div>
           </div>
         </div>

@@ -4,22 +4,16 @@ import { useRouter } from 'next/navigation'
 import { MONITOR_MODE_STORAGE_KEY, MONITOR_MODE_EVENT } from '../../lib/monitor-mode'
 
 const HOME_DWELL_MS = 2 * 60 * 1000 // 2 min on the home page
-const CYCLE_SLOT_MS = 15 * 1000 // 15s per team while cycling on the map
-// We don't know the real team count from here (this lives in the root
-// layout, above any page's data fetch) — 16 is a generous upper bound for
-// the current roster. If the team count grows past that, bump this number;
-// if it's smaller, the map page just wraps around (teams repeat) for the
-// remainder of the cycling window, which is harmless.
-const CYCLE_SLOTS = 16
-const MAP_OVERVIEW_DWELL_MS = 2 * 60 * 1000 // 2 min general view before heading home
+const MAP_DWELL_MS = 2 * 60 * 1000 // 2 min on the map
 
-// Optional kiosk/TV loop, off by default: home (2 min) -> full map, panning
-// to each team in turn every 15s (~4 min) -> full map overview (2 min) ->
-// back to home, repeating. Toggled from the sidebar; persisted in
-// localStorage so a kiosk display keeps it on across refreshes. Lives in
-// the root layout (never unmounts on navigation) so its timers survive
-// route changes — driving navigation via the URL (/map?focus=N) rather
-// than React context, so the map page just reads its own search params.
+// Optional kiosk/TV loop, off by default: home (2 min) -> full map (2 min)
+// -> back to home, repeating. Simpler than the main Tour de Callisto's
+// MonitorMode — that one also spotlights each team in turn on the map
+// (?focus=N, 15s each), which only makes sense with multiple teams to
+// cycle through; Canva's private single-team edition just alternates the
+// two pages. Toggled from the sidebar; persisted in localStorage so a
+// kiosk display keeps it on across refreshes. Lives in the root layout
+// (never unmounts on navigation) so its timers survive route changes.
 export default function MonitorMode() {
   const router = useRouter()
   const [enabled, setEnabled] = useState(false)
@@ -46,25 +40,12 @@ export default function MonitorMode() {
 
     function goHome() {
       router.replace('/dashboard')
-      schedule(HOME_DWELL_MS, startCycling)
+      schedule(HOME_DWELL_MS, goMap)
     }
 
-    function startCycling() {
-      tick(0)
-    }
-
-    function tick(slot: number) {
-      router.replace(`/map?focus=${slot}`)
-      if (slot + 1 >= CYCLE_SLOTS) {
-        schedule(CYCLE_SLOT_MS, startOverview)
-      } else {
-        schedule(CYCLE_SLOT_MS, () => tick(slot + 1))
-      }
-    }
-
-    function startOverview() {
+    function goMap() {
       router.replace('/map')
-      schedule(MAP_OVERVIEW_DWELL_MS, goHome)
+      schedule(MAP_DWELL_MS, goHome)
     }
 
     goHome()

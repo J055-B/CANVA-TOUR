@@ -1,5 +1,4 @@
 'use client'
-import React from 'react'
 import { TOUR_START } from '../../lib/calculations'
 
 // The Tour only actually starts on TOUR_START — before that there's nothing

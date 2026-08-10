@@ -5,7 +5,6 @@ import { RoutePoint, Team } from './types'
 
 const SHEET_ID = '1VE6emUfDlCUUDr-Au0zQTAXJ1kKETYvwF_wVBHAoBAU'
 const TARGET_SHEET_NAME = 'Target'
-const TOUR_START = '2026-08-10'
 const SHEET_CSV_URL = (sheetName: string) =>
   `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(
     sheetName
@@ -32,21 +31,16 @@ interface TeamSheetConfig {
   countryCode: string
 }
 
+// Single-team edition for Canva's own private Tour of Bulgaria — unlike
+// the main Tour de Callisto's TEAM_SHEETS (11 teams), this only ever
+// resolves the one "BG CANVA" row from the Target sheet, into the "Canva"
+// tab (confirmed against the live sheet's tab list, Aug 2026). Canva's
+// sheet is "another system" per Joss — same FTD-style sale-count target,
+// but the tab's own column layout hasn't been verified yet against
+// buildDailyHistoryByCount()'s date-column regex. If getTeams() ever comes
+// back with dailyHistory: [] for Canva, check this first.
 const TEAM_SHEETS: TeamSheetConfig[] = [
-  // CANVA is the only competitor in this edition. The Target tab uses the
-  // row name `BG CANVA`; the sheet itself has historically followed the
-  // FTD naming convention. We accept the known tab-name variants so the
-  // copy keeps working if the tab is renamed without changing the app.
-  {
-    matchName: 'BG CANVA',
-    teamCode: 'CANVA',
-    pool: 'FTD',
-    sheetNames: ['Canva', 'FTD BG CANVA', 'BG CANVA', 'CANVA'],
-    language: 'EN',
-    location: 'Bulgaria',
-    countryName: 'Bulgaria',
-    countryCode: 'BG'
-  }
+  { matchName: 'BG CANVA', teamCode: 'CANVA', pool: 'FTD', sheetNames: ['Canva'], language: 'BG', location: 'Bulgaria', countryName: 'Bulgaria', countryCode: 'BG' }
 ]
 
 function normalizeHeader(value: string) {
@@ -173,10 +167,23 @@ function assignTargets(configs: TeamSheetConfig[], targetRows: TargetRow[]) {
   })
 }
 
-// CANVA FTD: every sale row counts as +1 (Full and Partial both count).
-// Aug 10 starts at 08:00; from Aug 11 onward each day is a normal calendar
-// day from 00:00 through 23:59. Sales before Aug 10 08:00 are ignored.
+// The tour's very first day only counts sales from 08:00 onward — the Tour
+// launches mid-morning, not at midnight — every day after that is a normal
+// midnight-to-midnight day. Assumes the sheet's "Date" timestamps are
+// already Israel local time, same as everywhere else this file reads that
+// column. See the Aug 2026 "arranca a las 8am" ask.
+const FIRST_TOUR_DAY = '2026-08-10'
+const FIRST_DAY_START_HOUR = 8
 
+function isWithinCountedWindow(date: string, raw: string) {
+  if (date !== FIRST_TOUR_DAY) return true
+  const hour = Number(raw.slice(11, 13))
+  return Number.isFinite(hour) && hour >= FIRST_DAY_START_HOUR
+}
+
+// FTD sheets: every sale row counts as +1 (Full and Partial both count),
+// bucketed by the "Date"/"Conversion Date" column's calendar day. FTD daily
+// targets are a sale COUNT, not money, so this is the right unit for them.
 function buildDailyHistoryByCount(rows: string[][]): { date: string; sales: number }[] {
   if (rows.length < 2) return []
   const headers = rows[0].map((h) => normalizeHeader(h || ''))
@@ -186,17 +193,9 @@ function buildDailyHistoryByCount(rows: string[][]): { date: string; sales: numb
   const counts = new Map<string, number>()
   for (const row of rows.slice(1)) {
     const raw = (row[dateIndex] || '').trim()
-    const match = raw.match(/^(\d{4}-\d{2}-\d{2})(?:[ T](\d{1,2})(?::\d{2})?)/)
-    const calendarDate = match?.[1] ?? raw.slice(0, 10)
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(calendarDate)) continue
-
-    // CANVA competition clock:
-    // - Aug 10 starts at 08:00. Sales on Aug 10 before 08:00 do NOT count.
-    // - From Aug 11 onward, every calendar day runs 00:00–23:59.
-    // This is deliberately NOT a rolling 08:00→07:59 operational day.
-    const hour = match?.[2] !== undefined ? Number(match[2]) : 0
-    if (calendarDate === TOUR_START && hour < 8) continue
-    const date = calendarDate
+    const date = raw.slice(0, 10)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue
+    if (!isWithinCountedWindow(date, raw)) continue
     counts.set(date, (counts.get(date) ?? 0) + 1)
   }
 
@@ -222,6 +221,7 @@ function buildDailyHistoryByAmount(rows: string[][]): { date: string; sales: num
     const raw = (row[dateIndex] || '').trim()
     const date = raw.slice(0, 10)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue
+    if (!isWithinCountedWindow(date, raw)) continue
     const amount = parseNumber(row[amountIndex]) ?? 0
     totals.set(date, (totals.get(date) ?? 0) + amount)
   }
@@ -245,9 +245,7 @@ function buildTeam(cfg: TeamSheetConfig & { dailyTarget: number; monthlyTarget?:
   // RET's daily target is money, FTD's is a sale count — see the two
   // buildDailyHistoryBy* functions above for why each pool needs its own.
   const buildHistory = cfg.pool === 'RET' ? buildDailyHistoryByAmount : buildDailyHistoryByCount
-  const availableSheetNames = cfg.sheetNames.filter((name) => sheetRowsByName.has(name))
-  const selectedSheetNames = availableSheetNames.length ? [availableSheetNames[0]] : []
-  const histories = selectedSheetNames.map((name) => buildHistory(sheetRowsByName.get(name) ?? []))
+  const histories = cfg.sheetNames.map((name) => buildHistory(sheetRowsByName.get(name) ?? []))
   const dailyHistory = histories.reduce((acc, h) => mergeDailyHistory(acc, h), [] as { date: string; sales: number }[])
 
   return {

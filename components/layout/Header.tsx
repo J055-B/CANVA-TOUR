@@ -1,5 +1,6 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Clock } from 'lucide-react'
 
 const BRAND_INTERVAL_MS = 20000 // how often the brand banner plays
 const BRAND_DURATION_MS = 3200 // must match tailwind.config.cjs's brandSlide duration
@@ -45,18 +46,20 @@ export default function Header() {
           <div className="text-xl font-bold italic">
             TOUR OF <span className="shimmer-text">BULGARIA</span>
           </div>
-          <div className="text-sm text-secondaryText">CANVA EDITION · AUGUST 2026</div>
+          <div className="text-sm text-secondaryText">CANVA · AUGUST 2026 EDITION</div>
         </div>
         <img src="/images/Bicycle-transparent.png" alt="" className="w-10 h-10 object-contain shrink-0 ml-1" />
       </div>
 
-      <div className="relative w-56 h-10 overflow-hidden shrink-0">
+      <div className="relative w-56 h-11 overflow-hidden shrink-0 rounded-lg border border-border bg-elevated/60 backdrop-blur-sm">
         <div
-          className="absolute inset-0 flex items-center justify-end gap-4 text-secondaryText text-sm transition-opacity duration-300"
+          className="absolute inset-0 flex items-center justify-center gap-2.5 text-sm transition-opacity duration-300"
           style={{ opacity: showBrand ? 0 : 1 }}
         >
-          <div>{now ? formatDate(now) : ''}</div>
-          <div className="tabular-nums">{now ? formatTime(now) : ''}</div>
+          <Clock size={14} className="text-yellow shrink-0" />
+          <span className="text-secondaryText whitespace-nowrap">{now ? formatDate(now) : ''}</span>
+          <span className="w-1 h-1 rounded-full bg-yellow/70 animate-pulse shrink-0" />
+          <span className="tabular-nums font-bold text-primaryText">{now ? formatTime(now) : ''}</span>
         </div>
 
         {showBrand && (

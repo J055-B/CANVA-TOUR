@@ -23,7 +23,7 @@ export default function HeroPanel({ teams }: { teams: LeaderboardEntry[] }) {
   if (teams.length === 0) {
     return (
       <div className="rounded-lg overflow-hidden app-surface h-56 flex items-center justify-center text-secondaryText">
-        TOUR OF BULGARIA — CANVA
+        TOUR DE CALLISTO
       </div>
     )
   }
@@ -56,20 +56,25 @@ export default function HeroPanel({ teams }: { teams: LeaderboardEntry[] }) {
   const lastFlag = flagUrl(last.countryCode)
   const lastCity = last.currentStage?.split('→')[0]?.trim() || last.countryName
 
-  const showLastAndNext = teams.length > 1
+  // LAST shows whichever team is currently in last place — with only one
+  // team that's the same team/position as LEADER, so it'd just duplicate
+  // the middle card. NEXT STAGE doesn't have that problem: it's purely a
+  // preview of what's ahead on the leader's own route, independent of how
+  // many teams there are, so it stays visible even solo.
+  const showLast = teams.length > 1
 
   return (
     <div className="rounded-lg overflow-hidden app-surface">
       <div className="flex flex-col sm:flex-row h-[760px] sm:h-[26rem] divide-y sm:divide-y-0 sm:divide-x divide-border">
         {/* LAST */}
-        {showLastAndNext && (
+        {showLast && (
           <CardShell videoUrl={lastVideo}>
             <div>
               <span className="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide bg-elevated/80 border border-border text-secondaryText backdrop-blur-sm">
                 LAST
               </span>
               <div className="mt-2.5 leading-none">
-                <span className="text-2xl font-bold">STAGE </span>
+                <span className="text-2xl font-bold">CHECKPOINT </span>
                 <span className="text-2xl font-bold text-secondaryText">{lastStage.index}</span>
               </div>
               <div className="mt-1.5 text-sm font-semibold tracking-wide">{(last.currentStage || lastStage.label).toUpperCase()}</div>
@@ -84,7 +89,7 @@ export default function HeroPanel({ teams }: { teams: LeaderboardEntry[] }) {
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] text-secondaryText tracking-widest">STAGE PROGRESS</span>
+                <span className="text-[10px] text-secondaryText tracking-widest">CHECKPOINT PROGRESS</span>
                 <span className="text-xs text-secondaryText font-bold">{lastProgressPct.toFixed(1)}%</span>
               </div>
               <div className="flex items-center gap-2">
@@ -107,7 +112,7 @@ export default function HeroPanel({ teams }: { teams: LeaderboardEntry[] }) {
 
             <div className="mt-2.5 leading-none flex items-center flex-wrap gap-x-2.5 gap-y-1.5">
               <span>
-                <span className="text-3xl font-bold">STAGE </span>
+                <span className="text-3xl font-bold">CHECKPOINT </span>
                 <span className="text-3xl font-bold text-yellow">{leaderStage.index}</span>
               </span>
               {leaderStage.isPowerStage && (
@@ -134,7 +139,7 @@ export default function HeroPanel({ teams }: { teams: LeaderboardEntry[] }) {
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] text-secondaryText tracking-widest">STAGE PROGRESS</span>
+              <span className="text-[10px] text-secondaryText tracking-widest">CHECKPOINT PROGRESS</span>
               <span className="text-xs text-positive font-bold">{leaderProgressPct.toFixed(1)}%</span>
             </div>
             <div className="flex items-center gap-2">
@@ -146,25 +151,23 @@ export default function HeroPanel({ teams }: { teams: LeaderboardEntry[] }) {
           </div>
         </CardShell>
 
-        {/* NEXT STAGE */}
-        {showLastAndNext && (
-          <CardShell videoUrl={nextVideo}>
-            <div>
-              <span className="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide bg-electric/20 border border-electric/50 text-electric backdrop-blur-sm">
-                NEXT STAGE {nextStage.index}
-              </span>
-              <div className="mt-2.5 text-lg font-bold leading-tight">{nextStage.label.toUpperCase()}</div>
-              <div className="mt-2 inline-flex items-center gap-1.5 text-xs text-white font-semibold bg-black/55 backdrop-blur-sm rounded-full px-2.5 py-1">
-                {nextFlag && <img src={nextFlag} alt="" className="w-4 h-2.5 rounded-sm object-cover" />}
-                {nextCity}
-              </div>
+        {/* NEXT STAGE — no team-count gate here; see showLast's comment above. */}
+        <CardShell videoUrl={nextVideo}>
+          <div>
+            <span className="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide bg-electric/20 border border-electric/50 text-electric backdrop-blur-sm">
+              NEXT CHECKPOINT
+            </span>
+            <div className="mt-2.5 text-lg font-bold leading-tight">{nextStage.label.toUpperCase()}</div>
+            <div className="mt-2 inline-flex items-center gap-1.5 text-xs text-white font-semibold bg-black/55 backdrop-blur-sm rounded-full px-2.5 py-1">
+              {nextFlag && <img src={nextFlag} alt="" className="w-4 h-2.5 rounded-sm object-cover" />}
+              {nextCity}
             </div>
-            <div>
-              <div className="text-[10px] text-secondaryText tracking-widest">STAGE DISTANCE</div>
-              <div className="text-2xl font-bold text-electric mt-1">{nextStage.widthKm.toLocaleString()} KM</div>
-            </div>
-          </CardShell>
-        )}
+          </div>
+          <div>
+            <div className="text-[10px] text-secondaryText tracking-widest">CHECKPOINT DISTANCE</div>
+            <div className="text-2xl font-bold text-electric mt-1">{nextStage.widthKm.toLocaleString()} KM</div>
+          </div>
+        </CardShell>
       </div>
     </div>
   )

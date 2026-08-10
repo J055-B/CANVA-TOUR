@@ -1,5 +1,5 @@
 "use client"
-import React, { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Trophy } from 'lucide-react'
 import { LeaderboardEntry } from '../../lib/types'
 import { MILESTONE_STAGES, milestonePositionForDistance } from '../../lib/milestones'
@@ -34,9 +34,9 @@ export default function MilestoneChart({ teams }: { teams: LeaderboardEntry[] })
     <div className="rounded-lg p-4 app-surface">
       <div className="flex items-center justify-between gap-3 mb-3">
         <div>
-          <p className="text-xs uppercase tracking-[0.24em] text-secondaryText">Daily Milestone</p>
+          <p className="text-xs uppercase tracking-[0.24em] text-secondaryText">Route Checkpoint</p>
           <h3 className="text-lg font-bold mt-0.5">
-            STAGE {stage.index} — {stage.label.toUpperCase()}
+            CHECKPOINT {stage.index} — {stage.label.toUpperCase()}
           </h3>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -122,8 +122,8 @@ export default function MilestoneChart({ teams }: { teams: LeaderboardEntry[] })
         <div className="grid gap-3 px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-secondaryText" style={{ gridTemplateColumns: TEAM_LIST_COLS }}>
           <div>POS</div>
           <div>TEAM</div>
-          <div>STAGE</div>
-          <div>KM IN STAGE</div>
+          <div>CHECKPOINT</div>
+          <div>KM IN CHECKPOINT</div>
           <div>TOTAL KM</div>
         </div>
         <div className="mt-2 space-y-1.5">
@@ -147,7 +147,7 @@ export default function MilestoneChart({ teams }: { teams: LeaderboardEntry[] })
                   <span>{pos}</span>
                 </div>
                 <div className="text-base font-bold truncate">{p.team.teamCode}</div>
-                <div className="text-base font-semibold text-secondaryText">Stage {p.stageIndex}</div>
+                <div className="text-base font-semibold text-secondaryText">Checkpoint {p.stageIndex}</div>
                 <div className="text-base font-semibold">
                   {kmInStage.toLocaleString()} / {teamStage.widthKm.toLocaleString()} km
                 </div>

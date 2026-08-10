@@ -1,4 +1,3 @@
-import React from 'react'
 import LiveLeaderboard from '../../../components/leaderboard/LiveLeaderboard'
 import LiveStatusBadge from '../../../components/leaderboard/LiveStatusBadge'
 import HeroPanel from '../../../components/hero/HeroPanel'
@@ -19,7 +18,7 @@ export default async function Home() {
         <div className="rounded-lg p-6 app-surface">
           <div className="flex items-center gap-3 mb-6">
             <LiveStatusBadge />
-            <h2 className="text-2xl font-extrabold italic shimmer-text">LIVE LEADERBOARD</h2>
+            <h2 className="text-2xl font-extrabold italic shimmer-text">LIVE STATUS</h2>
           </div>
           <LiveLeaderboard entries={leaderboard} />
         </div>

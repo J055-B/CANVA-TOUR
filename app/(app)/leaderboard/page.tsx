@@ -1,4 +1,3 @@
-import React from 'react'
 import { getLeaderboard } from '../../../lib/data-source'
 import DetailedLeaderboard from '../../../components/leaderboard/DetailedLeaderboard'
 

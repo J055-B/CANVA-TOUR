@@ -2,7 +2,7 @@
 
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import React, { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { LeaderboardEntry, RoutePoint } from '../../lib/types'
 import { flagUrl } from '../../lib/flags'
 import { LOOP_KM } from '../../data/route'
@@ -37,7 +37,7 @@ export default function MiniRouteMap({ waypoints, teams }: { waypoints: RoutePoi
       maxBounds: WORLD_BOUNDS,
       maxBoundsViscosity: 1,
       minZoom: 1
-    }).setView([25, 20], 1)
+    }).setView([42.7, 23.3], 6)
     map.getContainer().style.background = '#05090B' // app's page bg — shows through as "ocean"
 
     // Same country-outline GeoJSON as the full /map page instead of a live

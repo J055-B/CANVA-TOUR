@@ -2,8 +2,7 @@
 
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { LeaderboardEntry, RoutePoint } from '../../lib/types'
 import { flagUrl } from '../../lib/flags'
 import { LOOP_KM, positionForDistance } from '../../data/route'
@@ -17,7 +16,8 @@ import {
   ROUTE_ANCHOR_COLOR,
   FLIGHT_LINE_COLOR
 } from '../../lib/route-geometry'
-import { MILESTONE_STAGES, milestonePositionForDistance, STAGE_BOUNDARY_POINTS } from '../../lib/milestones'
+import { MILESTONE_STAGES, STAGE_BOUNDARY_POINTS } from '../../lib/milestones'
+import { getRole, ROLE_CHANGED_EVENT } from '../../lib/session'
 
 // ---- OSRM road-routing (this full interactive map only — see MiniRouteMap for the lightweight card preview) ----
 
@@ -108,26 +108,44 @@ export default function RouteMap({ waypoints, teams }: { waypoints: RoutePoint[]
 
   const [simulate, setSimulate] = useState(false)
   const [simKm, setSimKm] = useState(0)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  // TEST MODE is an internal QA tool — only Admin should see it.
+  useEffect(() => {
+    const read = () => setIsAdmin(getRole() === 'admin')
+    read()
+    window.addEventListener(ROLE_CHANGED_EVENT, read)
+    window.addEventListener('storage', read)
+    return () => {
+      window.removeEventListener(ROLE_CHANGED_EVENT, read)
+      window.removeEventListener('storage', read)
+    }
+  }, [])
+
+  // Same "zoom to wherever the teams currently are" logic used on first
+  // mount — pulled out so the RESET VIEW button can re-run it on demand.
+  function resetView() {
+    const map = mapRef.current
+    if (!map) return
+    const initialPositions: LatLng[] = teams.map((team) => {
+      const wrapped = ((team.totalDistance % LOOP_KM) + LOOP_KM) % LOOP_KM
+      const { segmentIndex, fraction } = locate(segments, wrapped)
+      const seg = segments[segmentIndex]
+      return pointOnLine(seg.map((w) => w.coords as LatLng), fraction)
+    })
+    if (initialPositions.length) {
+      map.fitBounds(L.latLngBounds(initialPositions), { padding: [80, 80], maxZoom: 6 })
+    } else {
+      const allCoords: LatLng[] = waypoints.filter((w) => w.coords).map((w) => w.coords as LatLng)
+      if (allCoords.length) map.fitBounds(L.latLngBounds(allCoords), { padding: [30, 30] })
+    }
+  }
 
   const avgDailyTarget = useMemo(() => {
     const withTarget = teams.filter((t) => t.dailyTarget > 0)
     if (withTarget.length === 0) return 0
     return withTarget.reduce((sum, t) => sum + t.dailyTarget, 0) / withTarget.length
   }, [teams])
-
-  // Driven by MonitorMode.tsx's kiosk loop via /map?focus=N — when present,
-  // fly to that team and show its info card bottom-left. Absent in normal
-  // interactive use.
-  const searchParams = useSearchParams()
-  const focusParam = searchParams.get('focus')
-  const focusIndex = focusParam !== null && focusParam !== '' ? Number(focusParam) : null
-  const focusedTeam = focusIndex !== null && Number.isFinite(focusIndex) && teams.length > 0 ? teams[((focusIndex % teams.length) + teams.length) % teams.length] : null
-  const focusedMilestone = focusedTeam ? milestonePositionForDistance(focusedTeam.totalDistance) : null
-  const focusedPosition = focusedTeam
-    ? { countryCode: focusedTeam.countryCode, countryName: focusedTeam.countryName }
-    : null
-  const focusedFlag = focusedPosition ? flagUrl(focusedPosition.countryCode) : null
-  const focusedCity = focusedTeam?.currentStage?.split('→')[0]?.trim() || focusedPosition?.countryName
 
   async function loadRoadRoute() {
     setLoading(true)
@@ -159,13 +177,18 @@ export default function RouteMap({ waypoints, teams }: { waypoints: RoutePoint[]
     const WORLD_BOUNDS = L.latLngBounds([-85, -175], [85, 175])
     const map = L.map(mapDivRef.current, {
       zoomControl: true,
+      // Scroll-wheel zoom fights with scrolling the page itself once the
+      // map fills the screen — off. Arrow-key panning (keyboard) and the
+      // +/- buttons (zoomControl) still work.
+      scrollWheelZoom: false,
+      keyboard: true,
       // Keeps panning to a single world copy — mostly moot now that there's
       // no tile server to repeat, but still a sane pan limit.
       worldCopyJump: false,
       maxBounds: WORLD_BOUNDS,
       maxBoundsViscosity: 1,
       minZoom: 2
-    }).setView([20, 15], 3)
+    }).setView([42.7, 23.3], 7)
     map.getContainer().style.background = '#05090B' // app's page bg — shows through as "ocean"
 
     // Our own dark country outlines instead of a live tile server. Data:
@@ -201,19 +224,8 @@ export default function RouteMap({ waypoints, teams }: { waypoints: RoutePoint[]
 
     // Open zoomed on wherever the teams currently are, not the whole
     // planet zoomed all the way out — the full route is still reachable by
-    // scrolling/panning out.
-    const initialPositions: LatLng[] = teams.map((team) => {
-      const wrapped = ((team.totalDistance % LOOP_KM) + LOOP_KM) % LOOP_KM
-      const { segmentIndex, fraction } = locate(segments, wrapped)
-      const seg = segments[segmentIndex]
-      return pointOnLine(seg.map((w) => w.coords as LatLng), fraction)
-    })
-    if (initialPositions.length) {
-      map.fitBounds(L.latLngBounds(initialPositions), { padding: [80, 80], maxZoom: 6 })
-    } else {
-      const allCoords: LatLng[] = waypoints.filter((w) => w.coords).map((w) => w.coords as LatLng)
-      if (allCoords.length) map.fitBounds(L.latLngBounds(allCoords), { padding: [30, 30] })
-    }
+    // scrolling/panning out (or the RESET VIEW button).
+    resetView()
 
     loadRoadRoute()
 
@@ -302,34 +314,17 @@ export default function RouteMap({ waypoints, teams }: { waypoints: RoutePoint[]
     })
   }, [teams, simulate, simKm, segments, routedSegments, avgDailyTarget])
 
-  // Fly to the focused team (?focus=N, driven by MonitorMode's kiosk loop)
-  // whenever it changes.
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !focusedTeam) return
-    const wrapped = ((focusedTeam.totalDistance % LOOP_KM) + LOOP_KM) % LOOP_KM
-    const { segmentIndex, fraction } = locate(segments, wrapped)
-    const seg = segments[segmentIndex]
-    const coords = routedSegments[segmentIndex] ?? seg.map((w) => w.coords as LatLng)
-    const [lat, lon] = pointOnLine(coords, fraction)
-    map.flyTo([lat, lon], 7, { duration: 1.2 })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusIndex, teams, segments, routedSegments])
-
   return (
     <div className="space-y-4">
       <div className="relative">
         <div ref={mapDivRef} className="h-[78vh] min-h-[620px] w-full rounded-lg overflow-hidden border border-border" />
-        {focusedTeam && (
-          <div className="absolute left-4 bottom-4 z-[1000] bg-black/75 backdrop-blur-sm rounded-lg px-4 py-3 border border-border">
-            <div className="text-sm font-bold">{focusedTeam.teamCode}</div>
-            {focusedMilestone && <div className="text-xs text-secondaryText mt-0.5">STAGE {focusedMilestone.stageIndex}</div>}
-            <div className="text-xs text-white/90 font-semibold mt-1 flex items-center gap-1.5">
-              {focusedFlag && <img src={focusedFlag} alt="" className="w-4 h-2.5 rounded-sm object-cover" />}
-              {focusedCity}
-            </div>
-          </div>
-        )}
+        <button
+          onClick={resetView}
+          className="absolute top-[84px] left-[10px] z-[1000] bg-elevated/90 backdrop-blur-sm border border-border rounded-md px-2.5 py-1.5 text-[11px] font-bold text-secondaryText hover:text-yellow hover:border-yellow transition flex items-center gap-1"
+          title="Reset the map back to where the team is"
+        >
+          ⟲ RESET VIEW
+        </button>
       </div>
 
       <div className="rounded-lg p-4 app-surface flex flex-wrap items-center justify-between gap-3">
@@ -343,28 +338,30 @@ export default function RouteMap({ waypoints, teams }: { waypoints: RoutePoint[]
         </button>
       </div>
 
-      <div className="rounded-lg p-4 border border-orange-400/50 bg-orange-400/10">
-        <div className="flex items-center justify-between gap-3 mb-2">
-          <label className="flex items-center gap-2 text-sm font-bold text-orange-300">
-            <input type="checkbox" checked={simulate} onChange={(e) => setSimulate(e.target.checked)} />
-            TEST MODE — preview positions before the Tour starts
-          </label>
-          <span className="text-xs text-secondaryText">Doesn't affect real data</span>
+      {isAdmin && (
+        <div className="rounded-lg p-4 border border-orange-400/50 bg-orange-400/10">
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <label className="flex items-center gap-2 text-sm font-bold text-orange-300">
+              <input type="checkbox" checked={simulate} onChange={(e) => setSimulate(e.target.checked)} />
+              TEST MODE — preview positions before the Tour starts
+            </label>
+            <span className="text-xs text-secondaryText">Admin only · Doesn't affect real data</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={LOOP_KM}
+            step={10}
+            value={simKm}
+            disabled={!simulate}
+            onChange={(e) => setSimKm(Number(e.target.value))}
+            className="w-full"
+          />
+          <div className="text-xs text-secondaryText mt-1">
+            {simulate ? `Simulated leader pace: ${simKm.toLocaleString()} km / ${LOOP_KM.toLocaleString()} km` : 'Enable to drag teams along the route for a preview'}
+          </div>
         </div>
-        <input
-          type="range"
-          min={0}
-          max={LOOP_KM}
-          step={10}
-          value={simKm}
-          disabled={!simulate}
-          onChange={(e) => setSimKm(Number(e.target.value))}
-          className="w-full"
-        />
-        <div className="text-xs text-secondaryText mt-1">
-          {simulate ? `Simulated leader pace: ${simKm.toLocaleString()} km / ${LOOP_KM.toLocaleString()} km` : 'Enable to drag teams along the route for a preview'}
-        </div>
-      </div>
+      )}
     </div>
   )
 }

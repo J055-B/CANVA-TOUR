@@ -1,4 +1,3 @@
-import React from 'react'
 import { getRoute, getLeaderboard } from '../../../lib/data-source'
 import { LOOP_KM } from '../../../data/route'
 import RouteMapLoader from '../../../components/map/RouteMapLoader'
