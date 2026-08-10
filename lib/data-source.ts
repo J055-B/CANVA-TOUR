@@ -182,12 +182,15 @@ function isWithinCountedWindow(date: string, raw: string) {
 }
 
 // FTD sheets: every sale row counts as +1 (Full and Partial both count),
-// bucketed by the "Date"/"Conversion Date" column's calendar day. FTD daily
-// targets are a sale COUNT, not money, so this is the right unit for them.
+// bucketed by the "Date"/"Conversion Date"/"Consultation Date" column's
+// calendar day — Canva's sheet uses "Consultation Date" instead of
+// "Conversion Date" like the other FTD tabs (see the Aug 2026 "3 sales not
+// showing up" bug). FTD daily targets are a sale COUNT, not money, so this
+// is the right unit for them.
 function buildDailyHistoryByCount(rows: string[][]): { date: string; sales: number }[] {
   if (rows.length < 2) return []
   const headers = rows[0].map((h) => normalizeHeader(h || ''))
-  const dateIndex = headers.findIndex((h) => /conversion.*date|^date$/.test(h))
+  const dateIndex = headers.findIndex((h) => /conversion.*date|consultation.*date|^date$/.test(h))
   if (dateIndex === -1) return []
 
   const counts = new Map<string, number>()
@@ -212,7 +215,7 @@ function buildDailyHistoryByCount(rows: string[][]): { date: string; sales: numb
 function buildDailyHistoryByAmount(rows: string[][]): { date: string; sales: number }[] {
   if (rows.length < 2) return []
   const headers = rows[0].map((h) => normalizeHeader(h || ''))
-  const dateIndex = headers.findIndex((h) => /conversion.*date|^date$/.test(h))
+  const dateIndex = headers.findIndex((h) => /conversion.*date|consultation.*date|^date$/.test(h))
   const amountIndex = headers.findIndex((h) => /^sum$/.test(h))
   if (dateIndex === -1 || amountIndex === -1) return []
 
