@@ -2,7 +2,7 @@ import '../styles/globals.css'
 import React from 'react'
 
 export const metadata = {
-  title: 'Tour of Bulgaria — Canva'
+  title: 'Tour de Callisto — Canva'
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

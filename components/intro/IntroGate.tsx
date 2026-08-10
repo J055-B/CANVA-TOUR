@@ -1,19 +1,12 @@
 'use client'
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Lock, X, Bike } from 'lucide-react'
+import { Lock, X } from 'lucide-react'
 import { ROLE_STORAGE_KEY } from '../../lib/session'
 
 const ADMIN_USER = 'Admin'
 const ADMIN_PASS = 'Callisto2026'
 
-// Canva's private Tour of Bulgaria has no dedicated hero photo (the main
-// Tour de Callisto's poster has "CALLISTO" baked into the image itself —
-// wrong branding to reuse here) — this is a CSS-only intro instead:
-// Bulgaria's flag colors (white/green/red) as a thin accent, radial glow,
-// and the same yellow/dark app palette everywhere else. Swap in a real
-// image later by giving this the same treatment as IntroGate's original
-// (see git history / the main Tour de Callisto repo) if one becomes available.
 export default function IntroGate() {
   const router = useRouter()
   const [showAdminModal, setShowAdminModal] = useState(false)
@@ -35,6 +28,10 @@ export default function IntroGate() {
   function submitAdmin(e: React.FormEvent) {
     e.preventDefault()
     if (username === ADMIN_USER && password === ADMIN_PASS) {
+      // Client-side only — good enough to gate casual access, but anyone who
+      // opens dev tools can read ADMIN_USER/ADMIN_PASS from the bundle. Not
+      // a substitute for real auth if this ever needs to guard something
+      // sensitive.
       try {
         localStorage.setItem(ROLE_STORAGE_KEY, 'admin')
       } catch {}
@@ -44,50 +41,41 @@ export default function IntroGate() {
     }
   }
 
+  // The image is 1672x941 — instead of object-cover (fills the screen but
+  // crops whatever doesn't fit that aspect ratio, which is what was
+  // cutting off the top/bottom), this sizes a container to the exact same
+  // ratio, as large as fits the viewport (letterboxed on whichever side
+  // doesn't match), so the full image is always visible and the ENTER/
+  // ADMIN buttons — positioned as % of THIS container, not the raw
+  // viewport — stay locked to the same spot on the image at every screen size.
+  const frameStyle: React.CSSProperties = {
+    width: 'min(100vw, calc(100vh * (1672 / 941)))',
+    height: 'min(100vh, calc(100vw * (941 / 1672)))'
+  }
+
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-page flex items-center justify-center">
-      {/* Radial glow + faint road-line texture instead of a photo */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 70% 60% at 50% 35%, rgba(255,212,0,0.16) 0%, rgba(255,212,0,0.04) 45%, transparent 70%), linear-gradient(180deg, #05090B 0%, #0B1114 60%, #05090B 100%)'
-        }}
-      />
-      <div className="absolute inset-x-0 top-0 h-1.5 flex">
-        <div className="flex-1 bg-white/90" />
-        <div className="flex-1 bg-[#00966E]" />
-        <div className="flex-1 bg-[#D62612]" />
-      </div>
+      <div className="relative" style={frameStyle}>
+        <img src="/images/intro-bg.jpg" alt="Tour de Callisto" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-black/10" />
 
-      <div className="relative flex flex-col items-center text-center px-6">
-        <div className="flex items-center gap-2 text-xs tracking-[6px] text-secondaryText mb-6">
-          <span>&#10022;</span>
-          <span>CANVA PRIVATE CHALLENGE</span>
-          <span>&#10022;</span>
+        {/* ENTER + Admin lock — positioned in the open space between the
+            rider's legs / bike frame, matching the reference crop. */}
+        <div className="absolute flex flex-col items-center gap-4" style={{ left: '50%', top: '63%', transform: 'translate(-50%, -50%)' }}>
+          <button
+            onClick={enterAsGuest}
+            className="px-10 py-3 rounded-full bg-yellow text-black font-extrabold text-xl italic tracking-wide shadow-[0_0_30px_-4px_rgba(255,212,0,0.85)] hover:shadow-[0_0_44px_-2px_rgba(255,212,0,1)] hover:scale-105 transition-all"
+          >
+            ENTER
+          </button>
+          <button
+            onClick={() => setShowAdminModal(true)}
+            className="flex items-center gap-1.5 text-yellow/80 hover:text-yellow text-xs font-semibold tracking-widest transition-colors"
+          >
+            <Lock size={14} />
+            ADMIN
+          </button>
         </div>
-
-        <div className="flex items-center gap-4 mb-3">
-          <Bike size={40} className="text-yellow" />
-          <div className="text-5xl sm:text-7xl font-extrabold italic text-primaryText leading-none">
-            TOUR OF <span className="shimmer-text">BULGARIA</span>
-          </div>
-        </div>
-        <div className="text-sm sm:text-base text-secondaryText tracking-[3px] mb-14">2,500 KM &nbsp;·&nbsp; ONE LOOP &nbsp;·&nbsp; ONE TEAM</div>
-
-        <button
-          onClick={enterAsGuest}
-          className="px-12 py-3.5 rounded-full bg-yellow text-black font-extrabold text-xl italic tracking-wide shadow-[0_0_30px_-4px_rgba(255,212,0,0.85)] hover:shadow-[0_0_44px_-2px_rgba(255,212,0,1)] hover:scale-105 transition-all"
-        >
-          ENTER
-        </button>
-        <button
-          onClick={() => setShowAdminModal(true)}
-          className="flex items-center gap-1.5 text-yellow/80 hover:text-yellow text-xs font-semibold tracking-widest transition-colors mt-5"
-        >
-          <Lock size={14} />
-          ADMIN
-        </button>
       </div>
 
       {showAdminModal && (
