@@ -11,17 +11,24 @@ const WEEKS = [
   { start: '2026-08-24', end: '2026-08-31' } // Week 3 (8 days)
 ]
 
-// km awarded per 1% of daily target hit. Default is 10 (100% = 1,000km).
-// Power Stage weekends pay more; everything else uses DEFAULT_RATE.
+// km awarded per 1% of daily target hit. Canva's private edition runs a
+// 2,500km loop (not the main Tour de Callisto's 17,250km) — the rate is
+// scaled down to match, so 100% of daily target moves the team a sensible
+// fraction of THIS route instead of the main Tour's much longer one. Per
+// Joss's boss: 2,500km / 16 = 156.25km per 100% target (Aug 2026 "857km
+// after only 8 sales" bug — the old code kept the main Tour's 10km/1%
+// rate unscaled, so a handful of sales covered a third of the whole map).
+// Power Stage weekends keep the same 1.5x / 1.25x multipliers as the main
+// Tour, just applied to this smaller base rate.
+const DEFAULT_RATE = 156.25 / 100 // 1.5625 km per 1% (100% = 156.25km)
 const POWER_RATE: Record<string, number> = {
-  '2026-08-15': 15, // Power Stage 1 (Week 1 weekend)
-  '2026-08-16': 15,
-  '2026-08-22': 15, // Power Stage 2 (Week 2 weekend)
-  '2026-08-23': 15,
-  '2026-08-29': 12.5, // Final Power Stage (Week 3 weekend)
-  '2026-08-30': 12.5
+  '2026-08-15': DEFAULT_RATE * 1.5, // Power Stage 1 (Week 1 weekend)
+  '2026-08-16': DEFAULT_RATE * 1.5,
+  '2026-08-22': DEFAULT_RATE * 1.5, // Power Stage 2 (Week 2 weekend)
+  '2026-08-23': DEFAULT_RATE * 1.5,
+  '2026-08-29': DEFAULT_RATE * 1.25, // Final Power Stage (Week 3 weekend)
+  '2026-08-30': DEFAULT_RATE * 1.25
 }
-const DEFAULT_RATE = 10
 
 function ratePerPercent(dateStr: string) {
   return POWER_RATE[dateStr] ?? DEFAULT_RATE
